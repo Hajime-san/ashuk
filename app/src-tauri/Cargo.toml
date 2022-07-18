@@ -1,11 +1,11 @@
 [package]
-name = "app"
+name = "ashuk-app"
 version = "0.1.0"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["Hajime-san <utd.c.r.d.s.a@gmail.com>"]
 license = ""
 repository = ""
-default-run = "app"
+default-run = "ashuk-app"
 edition = "2021"
 rust-version = "1.57"
 
@@ -18,6 +18,8 @@ tauri-build = { version = "1.0.4", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.0.4", features = ["api-all"] }
+tokio = { version = "1.9", features = ["full"] }
+futures = "0.3"
 
 [features]
 # by default Tauri runs in production mode
@@ -26,3 +28,6 @@ default = [ "custom-protocol" ]
 # this feature is used used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[dependencies.ashuk-core]
+path = "../../core"
