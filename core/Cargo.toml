@@ -1,5 +1,5 @@
 [package]
-name = "ashuk"
+name = "ashuk-core"
 version = "0.1.0"
 authors = ["Hajime-san <utd.c.r.d.s.a@gmail.com>"]
 edition = "2018"
