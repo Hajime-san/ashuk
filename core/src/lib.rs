@@ -53,12 +53,11 @@ pub async fn covert_to_webp(file_path: &str, quality: f32) -> Result<(), ImageIo
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<(), ImageIoError> {
-    covert_to_webp("src/assets/New-York-street-scene-with-steam-and-billboards.jpg", 100.0).await?;
-
-    Ok(())
-}
+// #[tokio::main]
+// async fn main() -> Result<(), ImageIoError> {
+//     covert_to_webp("src/assets/New-York-street-scene-with-steam-and-billboards.jpg", 100.0).await?;
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {
