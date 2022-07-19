@@ -1,12 +1,12 @@
-import './App.css'
-import { InputFile } from './components/InputFile'
+import './App.css';
+import { InputFile } from './components/InputFile';
 
 function App() {
-  return (
-    <div className="app">
-      <InputFile />
-    </div>
-  )
+	return (
+		<div className='app'>
+			<InputFile />
+		</div>
+	);
 }
 
-export default App
+export default App;
