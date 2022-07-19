@@ -3,24 +3,35 @@
   windows_subsystem = "windows"
 )]
 
-use ashuk_core::{ covert_to_webp };
+use ashuk_core::converter;
 use futures::future;
 use tokio;
 
 #[tauri::command]
-async fn command_covert_to_webp(file_path: Vec<String>) -> Result<String, String> {
+async fn command_covert_to_webp(file_path: Vec<String>) -> Result<Vec<converter::CovertResult>, String> {
   let tasks: Vec<_> = file_path
     .iter()
-    .map(|path| {
+    .map(|path| async {
       let path = path.clone();
       tokio::spawn(async move {
-        let result = covert_to_webp(&path, 100.0).await;
-      })
+        let res = converter::covert_to_webp(&path, 100.0).await;
+        if res.is_ok() {
+          res.unwrap()
+        } else {
+          converter::CovertResult {
+            status: converter::ConvertStatus::Failed,
+            input: None,
+            output: None,
+            elapsed: None,
+          }
+        }
+      }).await.unwrap()
     })
     .collect();
-  future::join_all(tasks).await;
 
-  Ok("SUCCESS".to_string())
+  let result = future::join_all(tasks).await;
+
+  Ok(result)
 }
 
 fn main() {
