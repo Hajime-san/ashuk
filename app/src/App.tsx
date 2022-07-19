@@ -3,11 +3,8 @@ import { InputFile } from './components/InputFile'
 
 function App() {
   return (
-    <div className="App">
-      <h1>ashuk</h1>
-      <div className="card">
-        <InputFile />
-      </div>
+    <div className="app">
+      <InputFile />
     </div>
   )
 }
