@@ -3,42 +3,157 @@
   windows_subsystem = "windows"
 )]
 
+use tauri::Manager;
 use ashuk_core::converter;
 use futures::future;
+use futures::stream::{self, StreamExt};
 use tokio;
+use rayon::prelude::*;
+use serde::{ Serialize, Deserialize };
 
-#[tauri::command]
-async fn command_covert_to_webp(file_path: Vec<String>) -> Result<Vec<converter::CovertResult>, String> {
-  let tasks: Vec<_> = file_path
-    .iter()
-    .map(|path| async {
-      let path = path.clone();
-      tokio::spawn(async move {
-        let res = converter::covert_to_webp(&path, 100.0).await;
-        if res.is_ok() {
-          res.unwrap()
-        } else {
-          converter::CovertResult {
-            status: converter::ConvertStatus::Failed,
-            input: None,
-            output: None,
-            elapsed: None,
-          }
-        }
-      }).await.unwrap()
-    })
-    .collect();
+use std::sync::Mutex;
+use std::collections::HashMap;
 
-  let result = future::join_all(tasks).await;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InputResult {
+  pub size: u64,
+  pub path: String,
+}
 
-  Ok(result)
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FileContext {
+  pub id: usize,
+  pub status: converter::ConvertStatus,
+  pub input: InputResult,
+  pub output: Option<converter::CovertResult>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FileStatus {
+  pub status: converter::ConvertStatus,
+  pub input: InputResult,
+  pub output: Option<converter::CovertResult>,
+}
+
+type FileList = HashMap<usize, FileContext>;
+
+pub struct FileState {
+  files: Mutex<FileList>,
+}
+
+impl FileState {
+  pub fn new(files: FileList) -> Self {
+    Self {
+      files: Mutex::new(files)
+    }
+  }
+
+  pub fn add_file(&self, file_path: &str) -> FileContext {
+    let mut files = self.files.lock().unwrap();
+    // increment id
+    let id = files.len() + 1;
+    // init data
+    let file = FileContext {
+      id: id,
+      status: converter::ConvertStatus::Initialized,
+      input: InputResult {
+        size: std::fs::metadata(&file_path).expect("There is no file.").len(),
+        path: file_path.to_string().clone(),
+      },
+      output: None,
+    };
+    // update hashmap
+    files.insert(id, file.clone());
+
+    file
+  }
+
+  pub fn update_file(&self, id: usize, file_status: FileStatus) -> FileContext {
+    let mut files = self.files.lock().unwrap();
+    let file = files.get(&id);
+    let new_file = FileContext {
+      id: id,
+      status: file_status.status,
+      input: file_status.input,
+      output: file_status.output,
+    };
+    // update hashmap
+    files.entry(id).or_insert(new_file.clone());
+
+    new_file
+  }
+
+  pub fn delete_file(&self, id: usize) {
+    let mut files = self.files.lock().unwrap();
+    let file = files.get(&id);
+    let deleted = file.clone();
+    // update hashmap
+    files.retain(|&x, _| x == id);
+  }
+
+  pub fn get_files(&self) -> FileList {
+    let files = self.files.lock().unwrap();
+    files.clone()
+  }
+
+  pub fn clear(&self) {
+    let mut files = self.files.lock().unwrap();
+    files.clear();
+  }
+}
+
+fn convert_file_handler(app: &tauri::AppHandle) {
+  let file_state = FileState::new(HashMap::new());
+  let app_handle = app.app_handle();
+  // listen file input
+  let id = app_handle.app_handle().listen_global("emit-file", move |event| {
+    // file path list to convert
+    let task_file: Vec<String> = serde_json::from_str(&event.payload().unwrap()).expect("JSON was not well-formatted");
+
+    task_file.into_par_iter().for_each(|path| {
+      // notify to client for start
+      let add_file = file_state.add_file(&path);
+      let serialized = serde_json::to_string(&add_file).expect("Invalid data format");
+      app_handle.emit_all("listen-file", serialized).unwrap();
+
+      let result = converter::covert_to_webp(&path, 100.0);
+      if result.is_ok() {
+        // update state
+        let updated_file = file_state.update_file(add_file.id,  FileStatus {
+          status: converter::ConvertStatus::Success,
+          input: add_file.input,
+          output: Some(result.unwrap())
+        });
+        // notify to client for success
+        let serialized = serde_json::to_string(&updated_file).expect("Invalid data format");
+        app_handle.emit_all("listen-file", serialized).unwrap();
+      } else {
+        // update state
+        let updated_file = file_state.update_file(add_file.id,  FileStatus {
+          status: converter::ConvertStatus::Failed,
+          input: add_file.input,
+          output: None
+        });
+        // notify to client for failure
+        let serialized = serde_json::to_string(&updated_file).expect("Invalid data format");
+        app_handle.emit_all("listen-file", serialized).unwrap();
+      }
+    });
+  });
 }
 
 fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
-      command_covert_to_webp,
+      // command_covert_to_webp,
     ])
+    .setup(|app| {
+      convert_file_handler(&app.app_handle());
+
+      #[cfg(debug_assertions)]
+      app.get_window("main").unwrap().open_devtools();
+      Ok(())
+    })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
