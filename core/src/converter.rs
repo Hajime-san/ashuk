@@ -33,33 +33,23 @@ fn set_file_to_same_dir(file_path: &str, extention: &str) -> String {
     output_file_path.to_string()
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ConvertStatus {
+    Initialized,
+    Pending,
     Success,
-    Failed
+    Failed,
+    Unsupported
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ImageContext {
-    pub size: u64,
-    pub path: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ElapsedTime {
-    pub sec: u64,
-    pub nano_sec: u32
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CovertResult {
-    pub status: ConvertStatus,
-    pub input: Option<ImageContext>,
-    pub output: Option<ImageContext>,
-    pub elapsed: Option<ElapsedTime>,
+    pub size: u64,
+    pub path: String,
+    pub elapsed: u64,
 }
 
-pub async fn covert_to_webp(file_path: &str, quality: f32) -> Result<CovertResult, ConvertError> {
+pub fn covert_to_webp(file_path: &str, quality: f32) -> Result<CovertResult, ConvertError> {
     let start = Instant::now();
 
     let decoded: DynamicImage = ImageReader::open(file_path)?.decode()?;
@@ -73,22 +63,11 @@ pub async fn covert_to_webp(file_path: &str, quality: f32) -> Result<CovertResul
     std::fs::write(&output_file_path, &*encoded)?;
 
     let end = start.elapsed();
-    // println!("{}.{:03}s took.", end.as_secs(), end.subsec_nanos() / 1_000_000);
 
     Ok(CovertResult {
-        status: ConvertStatus::Success,
-        input: Some(ImageContext {
-            size: std::fs::metadata(file_path)?.len(),
-            path: Some(file_path.to_string()),
-        }),
-        output: Some(ImageContext {
-            size: std::fs::metadata(&output_file_path)?.len(),
-            path: Some(output_file_path.clone()),
-        }),
-        elapsed: Some(ElapsedTime {
-            sec: end.as_secs(),
-            nano_sec: end.subsec_nanos() / 1_000_000
-        })
+        size: std::fs::metadata(&output_file_path)?.len(),
+        path: output_file_path.clone(),
+        elapsed: end.as_millis() as u64,
     })
 }
 
