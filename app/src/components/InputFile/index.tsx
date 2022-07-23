@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useOpen } from '~/hooks/useOpen';
 import { valueOf } from '~/types/util';
-import { listen, emit } from '@tauri-apps/api/event'
+import { emit, listen } from '@tauri-apps/api/event';
 
 import './style.css';
 
@@ -11,13 +11,13 @@ type FileMeta = {
 };
 
 type FileContext = {
-	id: number,
+	id: number;
 	status: 'Initialized' | 'Pending' | 'Success' | 'Failed' | 'Unsupported';
 	input: FileMeta;
 	output: FileMeta & {
-		elapsed: number
+		elapsed: number;
 	};
-}
+};
 
 const formatBytes = (bytes: number, decimals = 2) => {
 	if (bytes === 0) return '0 Bytes';
@@ -32,85 +32,83 @@ const formatBytes = (bytes: number, decimals = 2) => {
 };
 
 const useFileList = (
-	openedFiles: valueOf<Pick<ReturnType<typeof useOpen>, 'response'>> ,
+	openedFiles: valueOf<Pick<ReturnType<typeof useOpen>, 'response'>>,
 ) => {
-	const [ files, setFiles ] = useState<Map<number, FileContext>>(new Map())
+	const [files, setFiles] = useState<Map<number, FileContext>>(new Map());
 
 	const updateFiles = useCallback((key: number, value: FileContext) => {
-		setFiles(map => new Map(map.set(key, value)));
-	}, [])
+		setFiles((map) => new Map(map.set(key, value)));
+	}, []);
 
 	useEffect(() => {
 		if (!openedFiles || openedFiles.length === 0) {
 			return;
 		}
-		emit('emit-file', openedFiles)
+		emit('emit-file', openedFiles);
 	}, [openedFiles]);
 
 	useEffect(() => {
-        let unlisten: any;
-        const f = async () => {
-          unlisten = await listen<string>('listen-file', event => {
-			try {
-				const data = JSON.parse(event.payload) as FileContext
-				updateFiles(data.id, data)
-			} catch (error) {
-				console.log(error);
-			}
-          });
-        }
-        f();
+		let unlisten: any;
+		const f = async () => {
+			unlisten = await listen<string>('listen-file', (event) => {
+				try {
+					const data = JSON.parse(event.payload) as FileContext;
+					updateFiles(data.id, data);
+				} catch (error) {
+					console.log(error);
+				}
+			});
+		};
+		f();
 
-        return () => {
-          if (unlisten) {
-            unlisten();
-          }
-        }
-    }, [])
+		return () => {
+			if (unlisten) {
+				unlisten();
+			}
+		};
+	}, []);
 
 	return {
-		files
-	}
-}
+		files,
+	};
+};
 
 const FileList = (
 	props: { openedFiles: valueOf<Pick<ReturnType<typeof useOpen>, 'response'>> },
 ) => {
-	const { files } = useFileList(props.openedFiles)
+	const { files } = useFileList(props.openedFiles);
 
 	return (
 		<div style={{ overflowY: 'scroll', height: 'calc(100vh - (1rem * 2) - (62px + 1rem))' }}>
-			<ul
-				className='th'
-			>
+			<ul className='th'>
 				<li>filename</li>
 				<li>size(kb)</li>
 				<li>optimized size(kb)</li>
 			</ul>
 			{[...files].map(([id, item], i) => {
-					const convertedFile = item.status === 'Success'
-					const bgColor = i % 2 === 0 ? 'rgb(225 224 224)' : '#fafafa';
-					return (
-						<ul
-							style={{
-								display: 'grid',
-								gridTemplateColumns: '2fr 1fr 1fr',
-								columnGap: '1rem',
-								justifyContent: 'space-between',
-								padding: '0.2rem',
-								backgroundColor: bgColor,
-							}}
-							key={id + String(i)}
-						>
-							<li>
-								<span>{item.input.path}</span>
-								{convertedFile && <span>✅</span>}
-							</li>
-							<li>{formatBytes(item.input.size)}</li>
-							<li>{convertedFile && formatBytes(item.output.size)}</li>
-						</ul>
-					);
-				})}
+				const convertedFile = item.status === 'Success';
+				const bgColor = i % 2 === 0 ? 'rgb(225 224 224)' : '#fafafa';
+				return (
+					<ul
+						style={{
+							display: 'grid',
+							gridTemplateColumns: '2fr 1fr 1fr',
+							columnGap: '1rem',
+							justifyContent: 'space-between',
+							padding: '0.2rem',
+							backgroundColor: bgColor,
+						}}
+						key={id + String(i)}
+					>
+						<li>
+							<span>{item.input.path}</span>
+							{convertedFile && <span>✅</span>}
+						</li>
+						<li>{formatBytes(item.input.size)}</li>
+						<li>{convertedFile && formatBytes(item.output.size)}</li>
+					</ul>
+				);
+			})}
 		</div>
 	);
 };

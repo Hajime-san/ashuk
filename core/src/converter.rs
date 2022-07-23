@@ -1,7 +1,7 @@
 use image::io::Reader as ImageReader;
 use image::{DynamicImage, ImageError};
+use serde::{Deserialize, Serialize};
 use webp::{Encoder, WebPMemory};
-use serde::{ Serialize, Deserialize };
 
 use thiserror::Error;
 
@@ -39,7 +39,7 @@ pub enum ConvertStatus {
     Pending,
     Success,
     Failed,
-    Unsupported
+    Unsupported,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
