@@ -1,4 +1,5 @@
 #root {
+  overflow-y: hidden;
   max-width: 1280px;
   display: grid;
   width: 100%;
