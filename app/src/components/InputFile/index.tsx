@@ -10,14 +10,71 @@ import { FixedArea } from '../FixedArea';
 type FileMeta = {
 	path: string;
 	size: number;
+	extention: string;
 };
 
 type FileContext = {
 	id: number;
 	status: 'Initialized' | 'Pending' | 'Success' | 'Failed' | 'Unsupported';
-	input: FileMeta;
+	input: FileMeta & {
+		writable_extentions: Array<string>;
+	};
 	output: FileMeta & {
 		elapsed: number;
+	};
+};
+
+type FileList = Map<number, FileContext>;
+type FileListObject = { [key in number]: FileContext };
+
+type EmitFileRequestBody = {
+	files: FileListObject;
+	operation: 'Create' | 'Update' | 'Delete';
+};
+
+const emitFile = async (payload: Array<string>) => {
+	const map: FileListObject = {};
+	payload.forEach((path, i) => {
+		const file: FileContext = {
+			id: i,
+			status: 'Initialized',
+			input: {
+				path,
+				size: 0,
+				writable_extentions: [],
+				extention: '',
+			},
+			output: {
+				path: '',
+				size: 0,
+				elapsed: 0,
+				extention: '',
+			},
+		};
+		map[i] = file;
+	});
+	const requestBody: EmitFileRequestBody = {
+		files: map,
+		operation: 'Create',
+	};
+	emit('emit-file', requestBody);
+};
+
+const emitFileUpdate = async (payload: FileList) => {
+	const requestBody: EmitFileRequestBody = {
+		files: Object.fromEntries(payload),
+		operation: 'Update',
+	};
+	emit('emit-file', requestBody);
+};
+
+const useOptimize = (files: FileList) => {
+	const optimizeHandler = useCallback(() => {
+		emitFileUpdate(files);
+	}, [files]);
+
+	return {
+		optimizeHandler,
 	};
 };
 
@@ -36,17 +93,17 @@ const formatBytes = (bytes: number, decimals = 2) => {
 const useFileList = (
 	openedFiles: valueOf<Pick<ReturnType<typeof useOpen>, 'response'>>,
 ) => {
-	const [files, setFiles] = useState<Map<number, FileContext>>(new Map());
+	const [files, setFiles] = useState<FileList>(new Map());
 
 	const updateFiles = useCallback((key: number, value: FileContext) => {
 		setFiles((map) => new Map(map.set(key, value)));
 	}, []);
 
 	useEffect(() => {
-		if (!openedFiles || openedFiles.length === 0) {
+		if (!openedFiles || openedFiles.length === 0 || !Array.isArray(openedFiles)) {
 			return;
 		}
-		emit('emit-file', openedFiles);
+		emitFile(openedFiles);
 	}, [openedFiles]);
 
 	useEffect(() => {
@@ -72,13 +129,14 @@ const useFileList = (
 
 	return {
 		files,
+		updateFiles,
 	};
 };
 
 const FileList = (
-	props: { openedFiles: valueOf<Pick<ReturnType<typeof useOpen>, 'response'>> },
+	props: { files: FileList; updateFiles: (key: number, value: FileContext) => void },
 ) => {
-	const { files } = useFileList(props.openedFiles);
+	const { files, updateFiles } = props;
 
 	return (
 		<div style={{ overflowY: 'scroll', height: 'calc(100vh - (1rem * 2) - (62px + 1rem))' }}>
@@ -86,6 +144,7 @@ const FileList = (
 				<li>filename</li>
 				<li>size</li>
 				<li>optimized</li>
+				<li>target</li>
 			</ul>
 			{[...files].map(([id, item], i) => {
 				const convertedFile = item.status === 'Success';
@@ -94,7 +153,7 @@ const FileList = (
 					<ul
 						style={{
 							display: 'grid',
-							gridTemplateColumns: '2fr 1fr 1fr',
+							gridTemplateColumns: '2fr 1fr 1fr 1fr',
 							columnGap: '1rem',
 							justifyContent: 'space-between',
 							padding: '0.2rem',
@@ -107,7 +166,24 @@ const FileList = (
 							{convertedFile && <span>✅</span>}
 						</li>
 						<li>{formatBytes(item.input.size)}</li>
-						<li>{convertedFile && formatBytes(item.output.size)}</li>
+						<li>{convertedFile ? formatBytes(item.output.size) : ''}</li>
+						<li>
+							<select
+								name={'target-' + String(item.id)}
+								id={'target-' + String(item.id)}
+								defaultValue={item.input.extention}
+								onChange={(e) => {
+									updateFiles(id, {
+										...item,
+										...{ output: { ...item.output, extention: e.target.value } },
+									});
+								}}
+							>
+								{item.input.writable_extentions.map((v) => {
+									return <option value={v} key={v}>{v}</option>;
+								})}
+							</select>
+						</li>
 					</ul>
 				);
 			})}
@@ -116,31 +192,37 @@ const FileList = (
 };
 
 const useOpenFileDialog = () => {
-	const request = useInternalProcess<Array<{
-		ext: string,
-		readable: boolean,
-		writable: boolean
-	}>>('get_supported_extentions')
+	const request = useInternalProcess<
+		Array<{
+			ext: string;
+			readable: boolean;
+			writable: boolean;
+		}>
+	>('get_supported_extentions');
 	const open = useOpen({
 		multiple: true,
-		filters: request.response ? [
-			{
-			    name: '*',
-				// filter by readble format
-			    extensions: request.response.filter(v => v.readable).map(v => v.ext)
-			}
-		] : []
+		filters: request.response
+			? [
+				{
+					name: '*',
+					// filter by readble format
+					extensions: request.response.filter((v) => v.readable).map((v) => v.ext),
+				},
+			]
+			: [],
 	});
-	return open
-}
+	return open;
+};
 
 export const InputFile = () => {
-	const { response, error, openHandler } = useOpenFileDialog()
+	const { response, error, openHandler } = useOpenFileDialog();
+	const { files, updateFiles } = useFileList(response);
+	const { optimizeHandler } = useOptimize(files);
 
 	return (
 		<div style={{ height: '100%' }}>
-			<FileList openedFiles={response} />
-			<FixedArea openHandler={openHandler}/>
+			<FileList files={files} updateFiles={updateFiles} />
+			<FixedArea openHandler={openHandler} optimizeHandler={optimizeHandler} />
 		</div>
 	);
 };

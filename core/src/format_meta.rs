@@ -3,7 +3,6 @@ use image;
 pub struct ImageFormat(image::ImageFormat);
 
 impl ImageFormat {
-
     pub fn can_read(format: &image::ImageFormat) -> bool {
         match format {
             image::ImageFormat::Png => true,
@@ -20,7 +19,7 @@ impl ImageFormat {
             image::ImageFormat::Pnm => true,
             image::ImageFormat::Farbfeld => true,
             image::ImageFormat::Avif => true,
-            _ => false
+            _ => false,
         }
     }
     // override 'image' crate
@@ -41,7 +40,7 @@ impl ImageFormat {
             image::ImageFormat::Hdr => false,
             image::ImageFormat::OpenExr => true,
             image::ImageFormat::Dds => false,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -64,7 +63,13 @@ pub fn get_formats() -> Vec<image::ImageFormat> {
     let tiff = image::ImageFormat::Tiff;
     let webp = image::ImageFormat::WebP;
 
-    let formats = vec![avif, bmp, farbfeld, dds, gif, hdr, ico, jpg, exr, png, pnm, tga, tiff, webp];
+    let formats = vec![
+        avif, bmp, farbfeld, dds, gif, hdr, ico, jpg, exr, png, pnm, tga, tiff, webp,
+    ];
 
     formats
+}
+
+pub fn get_format_from_path(path: &str) -> image::ImageResult<image::ImageFormat> {
+    image::ImageFormat::from_path(path)
 }
