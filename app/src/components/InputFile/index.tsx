@@ -5,6 +5,7 @@ import { emit, listen } from '@tauri-apps/api/event';
 
 import './style.css';
 import { useInternalProcess } from '~/hooks/useInternalProcess';
+import { FixedArea } from '../FixedArea';
 
 type FileMeta = {
 	path: string;
@@ -83,8 +84,8 @@ const FileList = (
 		<div style={{ overflowY: 'scroll', height: 'calc(100vh - (1rem * 2) - (62px + 1rem))' }}>
 			<ul className='th'>
 				<li>filename</li>
-				<li>size(kb)</li>
-				<li>optimized size(kb)</li>
+				<li>size</li>
+				<li>optimized</li>
 			</ul>
 			{[...files].map(([id, item], i) => {
 				const convertedFile = item.status === 'Success';
@@ -139,25 +140,7 @@ export const InputFile = () => {
 	return (
 		<div style={{ height: '100%' }}>
 			<FileList openedFiles={response} />
-			<div style={{ position: 'fixed', right: 0, bottom: 0, margin: '1rem' }}>
-				<label
-					htmlFor='file'
-					onClick={openHandler}
-					style={{
-						padding: '1rem',
-						backgroundColor: '#00c3ff',
-						width: 200,
-						height: 30,
-						display: 'inline-flex',
-						alignItems: 'center',
-						borderRadius: '10px',
-						cursor: 'pointer',
-					}}
-				>
-					<p style={{ width: '100%', textAlign: 'center', color: '#fff' }}>Open file</p>
-				</label>
-				<input id='file' hidden />
-			</div>
+			<FixedArea openHandler={openHandler}/>
 		</div>
 	);
 };
