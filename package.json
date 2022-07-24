@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "lint:ts": "cd app && deno lint -c deno.json",
+    "fmt:ts": "cd app && deno fmt -c deno.json",
+    "fmt:rust": "cd core && cargo fmt && cd ../app/src-tauri && cargo fmt"
+  }
+}

@@ -8,9 +8,7 @@
     "build:client": "tsc && vite build",
     "preview": "vite preview",
     "dev": "tauri dev",
-    "build": "tauri build",
-    "lint": "deno lint -c deno.json",
-    "fmt": "deno fmt -c deno.json"
+    "build": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^1.0.2",
