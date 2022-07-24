@@ -4,6 +4,7 @@ import { valueOf } from '~/types/util';
 import { emit, listen } from '@tauri-apps/api/event';
 
 import './style.css';
+import { useInternalProcess } from '~/hooks/useInternalProcess';
 
 type FileMeta = {
 	path: string;
@@ -113,14 +114,27 @@ const FileList = (
 	);
 };
 
-export const InputFile = () => {
-	const { response, error, openHandler } = useOpen({
+const useOpenFileDialog = () => {
+	const request = useInternalProcess<Array<{
+		ext: string,
+		readable: boolean,
+		writable: boolean
+	}>>('get_supported_extentions')
+	const open = useOpen({
 		multiple: true,
-		// filters: [{
-		//     name: '*',
-		//     extensions: ['png', 'jpeg']
-		// }]
+		filters: request.response ? [
+			{
+			    name: '*',
+				// filter by readble format
+			    extensions: request.response.filter(v => v.readable).map(v => v.ext)
+			}
+		] : []
 	});
+	return open
+}
+
+export const InputFile = () => {
+	const { response, error, openHandler } = useOpenFileDialog()
 
 	return (
 		<div style={{ height: '100%' }}>
@@ -142,7 +156,7 @@ export const InputFile = () => {
 				>
 					<p style={{ width: '100%', textAlign: 'center', color: '#fff' }}>Open file</p>
 				</label>
-				<input id='file' accept='image/png, image/jpeg' hidden />
+				<input id='file' hidden />
 			</div>
 		</div>
 	);

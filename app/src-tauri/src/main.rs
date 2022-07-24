@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use ashuk_core::converter;
+use ashuk_core::{ converter, format_meta };
 use futures::future;
 use futures::stream::{self, StreamExt};
 use rayon::prelude::*;
@@ -104,7 +104,35 @@ impl FileState {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct SupportedFormatMeta {
+    ext: String,
+    readable: bool,
+    writable: bool
+}
+
+#[tauri::command]
+fn get_supported_extentions() -> Result<Vec<SupportedFormatMeta>, String> {
+    let extensions = format_meta::get_formats()
+        .iter()
+        .map(|x|
+                x.extensions_str()
+                .iter()
+                .map(move |y|
+                    // read/write flag decided by ImageFormat that extended 'image' crate
+                    SupportedFormatMeta {
+                        ext: <str as ToString>::to_string(*y),
+                        readable: format_meta::ImageFormat::can_read(&x),
+                        writable: format_meta::ImageFormat::can_write(&x)
+                    }
+                ))
+                .flatten()
+                .collect::<Vec<SupportedFormatMeta>>();
+    Ok(extensions)
+}
+
 fn convert_file_handler(app: &tauri::AppHandle) {
+    let emitter_name = "listen-file";
     let file_state = FileState::new(HashMap::new());
     let app_handle = app.app_handle();
     // listen file input
@@ -119,7 +147,7 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                 // notify to client for start
                 let add_file = file_state.add_file(&path);
                 let serialized = serde_json::to_string(&add_file).expect("Invalid data format");
-                app_handle.emit_all("listen-file", serialized).unwrap();
+                app_handle.emit_all(&emitter_name, serialized).unwrap();
 
                 let result = converter::covert_to_webp(&path, 100.0);
                 if result.is_ok() {
@@ -135,7 +163,7 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                     // notify to client for success
                     let serialized =
                         serde_json::to_string(&updated_file).expect("Invalid data format");
-                    app_handle.emit_all("listen-file", serialized).unwrap();
+                    app_handle.emit_all(&emitter_name, serialized).unwrap();
                 } else {
                     // update state
                     let updated_file = file_state.update_file(
@@ -149,7 +177,7 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                     // notify to client for failure
                     let serialized =
                         serde_json::to_string(&updated_file).expect("Invalid data format");
-                    app_handle.emit_all("listen-file", serialized).unwrap();
+                    app_handle.emit_all(&emitter_name, serialized).unwrap();
                 }
             });
         });
@@ -158,7 +186,7 @@ fn convert_file_handler(app: &tauri::AppHandle) {
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-          // command_covert_to_webp,
+            get_supported_extentions,
         ])
         .setup(|app| {
             convert_file_handler(&app.app_handle());
