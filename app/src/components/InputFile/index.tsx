@@ -23,7 +23,6 @@ type FileContext = {
 	};
 };
 
-type FileList = Map<string, FileContext>;
 type FileListObject = { [key in string]: FileContext };
 
 type EmitFileRequestBody = {
@@ -58,15 +57,15 @@ const emitFile = async (payload: Array<string>) => {
 	emit('emit-file', requestBody);
 };
 
-const emitFileUpdate = async (payload: FileList) => {
+const emitFileUpdate = async (payload: FileListObject) => {
 	const requestBody: EmitFileRequestBody = {
-		files: Object.fromEntries(payload),
+		files: payload,
 		operation: 'Update',
 	};
 	emit('emit-file', requestBody);
 };
 
-const useOptimize = (files: FileList) => {
+const useOptimize = (files: FileListObject) => {
 	const optimizeHandler = useCallback(() => {
 		emitFileUpdate(files);
 	}, [files]);
@@ -91,17 +90,23 @@ const formatBytes = (bytes: number, decimals = 2) => {
 const useFileList = (
 	openedFiles: valueOf<Pick<ReturnType<typeof useOpen>, 'response'>>,
 ) => {
-	const [files, setFiles] = useState<FileList>(new Map());
+	const [files, setFiles] = useState<FileListObject>({});
 
 	const updateFiles = useCallback((key: string, value: FileContext) => {
-		setFiles((map) => new Map(map.set(key, value)));
+		setFiles((obj) => {
+			return { ...obj, ...{ [key]: value } }
+		});
 	}, []);
 
-	useEffect(() => {
+	const openFiles = useCallback(() => {
 		if (!openedFiles || openedFiles.length === 0 || !Array.isArray(openedFiles)) {
 			return;
 		}
 		emitFile(openedFiles);
+	}, [openedFiles]);
+
+	useEffect(() => {
+		openFiles()
 	}, [openedFiles]);
 
 	useEffect(() => {
@@ -132,7 +137,7 @@ const useFileList = (
 };
 
 const FileList = (
-	props: { files: FileList; updateFiles: (key: string, value: FileContext) => void },
+	props: { files: FileListObject; updateFiles: (key: string, value: FileContext) => void },
 ) => {
 	const { files, updateFiles } = props;
 
@@ -144,7 +149,7 @@ const FileList = (
 				<li>optimized</li>
 				<li>target</li>
 			</ul>
-			{[...files].map(([key, item], i) => {
+			{Object.entries(files).map(([key, item], i) => {
 				const convertedFile = item.status === 'Success';
 				const bgColor = i % 2 === 0 ? 'rgb(225 224 224)' : '#fafafa';
 				return (
