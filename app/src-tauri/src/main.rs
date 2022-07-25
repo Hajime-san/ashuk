@@ -120,6 +120,15 @@ impl FileState {
     }
 }
 
+fn notify_file_to_client(
+    app_handle: &tauri::AppHandle,
+    file_context: &FileContext,
+    emitter_name: &str,
+) {
+    let serialized = serde_json::to_string(&file_context).expect("Invalid data format");
+    app_handle.emit_all(&emitter_name, serialized).unwrap();
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SupportedFormatMeta {
     ext: String,
@@ -160,15 +169,15 @@ fn convert_file_handler(app: &tauri::AppHandle) {
             match task.operation {
                 // notify to client for ready
                 EmitFileOperation::Create => {
+                    // process parallelly
                     task.files.into_par_iter().for_each(|(path, _)| {
                         let add_file = file_state.add_file(&path);
-                        let serialized =
-                            serde_json::to_string(&add_file).expect("Invalid data format");
-                        app_handle.emit_all(&emitter_name, serialized).unwrap();
+                        notify_file_to_client(&app_handle, &add_file, emitter_name);
                     });
                 }
                 // convert
                 EmitFileOperation::Update => {
+                    // process parallelly
                     task.files
                         .into_par_iter()
                         // skip converted file
@@ -176,7 +185,7 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                             !matches!(file.status, converter::ConvertStatus::Success)
                         })
                         .for_each(|(path, file)| {
-                            // convert
+                            // convert image
                             let result = converter::covert_to_target_extention(
                                 &path,
                                 &file.output.unwrap().extention,
@@ -194,9 +203,7 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                                     },
                                 );
                                 // notify to client for success
-                                let serialized = serde_json::to_string(&updated_file)
-                                    .expect("Invalid data format");
-                                app_handle.emit_all(&emitter_name, serialized).unwrap();
+                                notify_file_to_client(&app_handle, &updated_file, emitter_name);
                             } else {
                                 // update state
                                 let updated_file = file_state.update_file(
@@ -208,9 +215,7 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                                     },
                                 );
                                 // notify to client for failure
-                                let serialized = serde_json::to_string(&updated_file)
-                                    .expect("Invalid data format");
-                                app_handle.emit_all(&emitter_name, serialized).unwrap();
+                                notify_file_to_client(&app_handle, &updated_file, emitter_name);
                             }
                         });
                 }

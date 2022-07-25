@@ -94,7 +94,7 @@ const useFileList = (
 
 	const updateFiles = useCallback((key: string, value: FileContext) => {
 		setFiles((obj) => {
-			return { ...obj, ...{ [key]: value } }
+			return { ...obj, ...{ [key]: value } };
 		});
 	}, []);
 
@@ -106,7 +106,7 @@ const useFileList = (
 	}, [openedFiles]);
 
 	useEffect(() => {
-		openFiles()
+		openFiles();
 	}, [openedFiles]);
 
 	useEffect(() => {
