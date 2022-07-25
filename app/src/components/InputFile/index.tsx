@@ -14,7 +14,6 @@ type FileMeta = {
 };
 
 type FileContext = {
-	id: number;
 	status: 'Initialized' | 'Pending' | 'Success' | 'Failed' | 'Unsupported';
 	input: FileMeta & {
 		writable_extentions: Array<string>;
@@ -24,8 +23,8 @@ type FileContext = {
 	};
 };
 
-type FileList = Map<number, FileContext>;
-type FileListObject = { [key in number]: FileContext };
+type FileList = Map<string, FileContext>;
+type FileListObject = { [key in string]: FileContext };
 
 type EmitFileRequestBody = {
 	files: FileListObject;
@@ -33,13 +32,12 @@ type EmitFileRequestBody = {
 };
 
 const emitFile = async (payload: Array<string>) => {
-	const map: FileListObject = {};
-	payload.forEach((path, i) => {
+	const obj: FileListObject = {};
+	payload.forEach((key) => {
 		const file: FileContext = {
-			id: i,
 			status: 'Initialized',
 			input: {
-				path,
+				path: key,
 				size: 0,
 				writable_extentions: [],
 				extention: '',
@@ -51,10 +49,10 @@ const emitFile = async (payload: Array<string>) => {
 				extention: '',
 			},
 		};
-		map[i] = file;
+		obj[key] = file;
 	});
 	const requestBody: EmitFileRequestBody = {
-		files: map,
+		files: obj,
 		operation: 'Create',
 	};
 	emit('emit-file', requestBody);
@@ -95,7 +93,7 @@ const useFileList = (
 ) => {
 	const [files, setFiles] = useState<FileList>(new Map());
 
-	const updateFiles = useCallback((key: number, value: FileContext) => {
+	const updateFiles = useCallback((key: string, value: FileContext) => {
 		setFiles((map) => new Map(map.set(key, value)));
 	}, []);
 
@@ -112,7 +110,7 @@ const useFileList = (
 			unlisten = await listen<string>('listen-file', (event) => {
 				try {
 					const data = JSON.parse(event.payload) as FileContext;
-					updateFiles(data.id, data);
+					updateFiles(data.input.path, data);
 				} catch (error) {
 					console.log(error);
 				}
@@ -134,7 +132,7 @@ const useFileList = (
 };
 
 const FileList = (
-	props: { files: FileList; updateFiles: (key: number, value: FileContext) => void },
+	props: { files: FileList; updateFiles: (key: string, value: FileContext) => void },
 ) => {
 	const { files, updateFiles } = props;
 
@@ -146,7 +144,7 @@ const FileList = (
 				<li>optimized</li>
 				<li>target</li>
 			</ul>
-			{[...files].map(([id, item], i) => {
+			{[...files].map(([key, item], i) => {
 				const convertedFile = item.status === 'Success';
 				const bgColor = i % 2 === 0 ? 'rgb(225 224 224)' : '#fafafa';
 				return (
@@ -159,7 +157,7 @@ const FileList = (
 							padding: '0.2rem',
 							backgroundColor: bgColor,
 						}}
-						key={id + String(i)}
+						key={key + String(i)}
 					>
 						<li>
 							<span>{item.input.path}</span>
@@ -169,11 +167,11 @@ const FileList = (
 						<li>{convertedFile ? formatBytes(item.output.size) : ''}</li>
 						<li>
 							<select
-								name={'target-' + String(item.id)}
-								id={'target-' + String(item.id)}
+								name={'target-' + String(key)}
+								id={'target-' + String(key)}
 								defaultValue={item.input.extention}
 								onChange={(e) => {
-									updateFiles(id, {
+									updateFiles(key, {
 										...item,
 										...{ output: { ...item.output, extention: e.target.value } },
 									});
