@@ -142,7 +142,7 @@ const FileList = (
 	const { files, updateFiles } = props;
 
 	return (
-		<div style={{ overflowY: 'scroll', height: 'calc(100vh - (1rem * 2) - (62px + 1rem))' }}>
+		<div className='container'>
 			<ul className='th'>
 				<li>filename</li>
 				<li>size</li>

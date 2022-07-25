@@ -1,3 +1,19 @@
+.container {
+    overflow-y: scroll;
+    height: calc(100vh - (1rem * 2) - (62px + 1rem));
+    border: 1px solid #e3e3e3;
+}
+
+.container::-webkit-scrollbar {
+    width: 3px;
+    height: 8px;
+    background-color: #e3e3e3;
+}
+
+.container::-webkit-scrollbar-thumb {
+    background-color: #a6a6a6;
+}
+
 .th {
     position: sticky;
     top: 0;
@@ -15,5 +31,5 @@
     height: 100%;
     content: '';
     background-color: #fff;
-    filter: blur(1px);
+    box-shadow: 0px 1px 10px #777;
 }
