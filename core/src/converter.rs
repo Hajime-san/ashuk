@@ -2,7 +2,7 @@ use image::io::Reader as ImageReader;
 use image::{DynamicImage, ImageError};
 
 use mozjpeg::{ColorSpace, Compress, ScanMode};
-use webp::{Encoder, WebPMemory};
+use webp;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -61,7 +61,7 @@ pub fn covert_to_target_extention(
 ) -> Result<CovertResult, ConvertError> {
     let start = Instant::now();
 
-    let decoded: DynamicImage = ImageReader::open(file_path)?.decode()?;
+    let decoded = ImageReader::open(file_path)?.decode()?;
 
     let input_extention = format_meta::get_format_from_path(&file_path)?;
 
@@ -82,9 +82,9 @@ pub fn covert_to_target_extention(
         image::ImageFormat::WebP => {
             let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
 
-            let encoder: Encoder = Encoder::from_image(&decoded).unwrap();
+            let encoder = webp::Encoder::from_image(&decoded).unwrap();
 
-            let encoded: WebPMemory = encoder.encode(quality);
+            let encoded = encoder.encode(quality);
 
             std::fs::write(&output_file_path, &*encoded)?;
 
