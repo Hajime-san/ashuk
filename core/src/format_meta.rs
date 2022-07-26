@@ -2,6 +2,11 @@ use image;
 
 pub struct ImageFormat(image::ImageFormat);
 
+pub enum ProcessStrategy {
+    Serial,
+    Parallel
+}
+
 impl ImageFormat {
     pub fn can_read(format: &image::ImageFormat) -> bool {
         match format {
@@ -17,6 +22,14 @@ impl ImageFormat {
             image::ImageFormat::Jpeg => true,
             image::ImageFormat::WebP => true,
             _ => false,
+        }
+    }
+    pub fn process_strategy(format: &image::ImageFormat) -> ProcessStrategy {
+        match format {
+            image::ImageFormat::Png => ProcessStrategy::Serial,
+            image::ImageFormat::Jpeg => ProcessStrategy::Parallel,
+            image::ImageFormat::WebP => ProcessStrategy::Parallel,
+            _ => unreachable!("unsupported format"),
         }
     }
 }

@@ -122,6 +122,53 @@ impl FileState {
         let mut files = self.files.lock().unwrap();
         files.clear();
     }
+
+    pub fn process_convert(&self, app_handle: &tauri::AppHandle, emitter_name: &str, path: std::string::String, file: FileContext) {
+        // update state
+        let updated_file = self.update_file(
+            path.clone(),
+            FileContext {
+                status: converter::ConvertStatus::Pending,
+                input: file.clone().input,
+                output: None,
+            },
+        );
+        // notify to client for start converting
+        notify_file_to_client(&app_handle, &updated_file, emitter_name);
+
+        // convert image
+        let result = converter::covert_to_target_extention(
+            &path,
+            &file.output.unwrap().extention,
+            75.0,
+        );
+
+        if result.is_ok() {
+            // update state
+            let updated_file = self.update_file(
+                path,
+                FileContext {
+                    status: converter::ConvertStatus::Success,
+                    input: file.input,
+                    output: Some(result.unwrap()),
+                },
+            );
+            // notify to client for success
+            notify_file_to_client(&app_handle, &updated_file, emitter_name);
+        } else {
+            // update state
+            let updated_file = self.update_file(
+                path,
+                FileContext {
+                    status: converter::ConvertStatus::Failed,
+                    input: file.input,
+                    output: None,
+                },
+            );
+            // notify to client for failure
+            notify_file_to_client(&app_handle, &updated_file, emitter_name);
+        }
+    }
 }
 
 fn notify_file_to_client(
@@ -181,47 +228,37 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                 }
                 // convert
                 EmitFileOperation::Update => {
-                    // process parallelly
-                    task.files
-                        .into_par_iter()
-                        // skip converted file
-                        .filter(|(_, file)| {
-                            !matches!(file.status, converter::ConvertStatus::Success)
-                        })
-                        .for_each(|(path, file)| {
-                            // convert image
-                            let result = converter::covert_to_target_extention(
-                                &path,
-                                &file.output.unwrap().extention,
-                                75.0,
-                            );
+                    // wheather process parallelly or not
+                    let paralell_processable = task.clone().files.into_par_iter().all(|(path, _)|
+                        // process strategy with multithreading depends on it's library implementation
+                        matches!(
+                            format_meta::ImageFormat::process_strategy(&format_meta::get_format_from_path(&path).unwrap()),
+                            format_meta::ProcessStrategy::Parallel
+                        )
+                    );
 
-                            if result.is_ok() {
-                                // update state
-                                let updated_file = file_state.update_file(
-                                    path,
-                                    FileContext {
-                                        status: converter::ConvertStatus::Success,
-                                        input: file.input,
-                                        output: Some(result.unwrap()),
-                                    },
-                                );
-                                // notify to client for success
-                                notify_file_to_client(&app_handle, &updated_file, emitter_name);
-                            } else {
-                                // update state
-                                let updated_file = file_state.update_file(
-                                    path,
-                                    FileContext {
-                                        status: converter::ConvertStatus::Failed,
-                                        input: file.input,
-                                        output: None,
-                                    },
-                                );
-                                // notify to client for failure
-                                notify_file_to_client(&app_handle, &updated_file, emitter_name);
-                            }
-                        });
+                    match paralell_processable {
+                        true => {
+                            // process parallelly
+                            task.files
+                                .into_par_iter()
+                                // skip converted file
+                                .filter(|(_, file)| {
+                                    !matches!(file.status, converter::ConvertStatus::Success)
+                                })
+                                .for_each(|(path, file)| file_state.process_convert(&app_handle, &emitter_name, path, file));
+                        }
+                        _ => {
+                            // process seriesly
+                            task.files
+                                .into_iter()
+                                // skip converted file
+                                .filter(|(_, file)| {
+                                    !matches!(file.status, converter::ConvertStatus::Success)
+                                })
+                                .for_each(|(path, file)| file_state.process_convert(&app_handle, &emitter_name, path, file));
+                        },
+                    };
                 }
                 _ => {
                     unimplemented!()
