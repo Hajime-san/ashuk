@@ -8,8 +8,12 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
+use env_logger;
+
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::env;
+use std::io::Write;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InputResult {
@@ -226,7 +230,30 @@ fn convert_file_handler(app: &tauri::AppHandle) {
         });
 }
 
+#[cfg(debug_assertions)]
+fn init_logger() {
+    env::set_var("RUST_LOG", "debug");
+    env_logger::Builder::from_default_env()
+        .format(|buf, record| {
+            let ts = buf.timestamp();
+            writeln!(
+                buf,
+                "[{} {} {}] {} {}:{}",
+                ts,
+                record.level(),
+                record.target(),
+                record.args(),
+                record.file().unwrap_or("unknown"),
+                record.line().unwrap_or(0),
+            )
+        })
+        .init();
+
+}
+
 fn main() {
+    init_logger();
+
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![get_supported_extentions,])
         .setup(|app| {
