@@ -1,21 +1,24 @@
 use image::io::Reader as ImageReader;
-use image::{DynamicImage, ImageError};
+use image::{ImageError};
 
 use mozjpeg::{ColorSpace, Compress, ScanMode};
 use webp;
+use oxipng;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 use crate::format_meta;
 
 #[derive(Error, Debug)]
 pub enum ConvertError {
-    #[error("file io error")]
+    #[error(transparent)]
+    PngError(#[from] oxipng::PngError),
+    #[error("file io error: {0}")]
     Disconnect(#[from] std::io::Error),
-    #[error("unknown image relative error")]
+    #[error("unknown error: {0}")]
     Unknown(#[from] ImageError),
 }
 
@@ -61,8 +64,6 @@ pub fn covert_to_target_extention(
 ) -> Result<CovertResult, ConvertError> {
     let start = Instant::now();
 
-    let decoded = ImageReader::open(file_path)?.decode()?;
-
     let input_extention = format_meta::get_format_from_path(&file_path)?;
 
     let output_extention = image::ImageFormat::from_extension(&target_extention).unwrap();
@@ -82,11 +83,13 @@ pub fn covert_to_target_extention(
         image::ImageFormat::WebP => {
             let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
 
+            let decoded = ImageReader::open(file_path)?.decode()?;
+
             let encoder = webp::Encoder::from_image(&decoded).unwrap();
 
-            let encoded = encoder.encode(quality);
+            let contents = encoder.encode(quality);
 
-            std::fs::write(&output_file_path, &*encoded)?;
+            std::fs::write(&output_file_path, &*contents)?;
 
             let end = start.elapsed();
 
@@ -99,6 +102,8 @@ pub fn covert_to_target_extention(
         }
         image::ImageFormat::Jpeg => {
             let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
+
+            let decoded = ImageReader::open(file_path)?.decode()?;
 
             let mut comp = Compress::new(ColorSpace::JCS_RGB);
             let width = decoded.width() as usize;
@@ -118,6 +123,28 @@ pub fn covert_to_target_extention(
             let contents = comp.data_to_vec().unwrap();
 
             std::fs::write(&output_file_path, contents)?;
+
+            let end = start.elapsed();
+
+            CovertResult {
+                size: std::fs::metadata(&output_file_path)?.len(),
+                path: output_file_path.clone(),
+                elapsed: end.as_millis() as u64,
+                extention: confirmed_extention.to_string(),
+            }
+        }
+        image::ImageFormat::Png => {
+            // don't use multi process outside this function, because of oxipng process image with multithreading
+            let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
+
+            let input = std::path::PathBuf::from(&file_path);
+            let output = std::path::PathBuf::from(&output_file_path);
+
+            oxipng::optimize(
+                &oxipng::InFile::Path(input),
+                &oxipng::OutFile::Path(Some(output)),
+                &oxipng::Options::max_compression()
+            )?;
 
             let end = start.elapsed();
 
