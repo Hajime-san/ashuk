@@ -3,7 +3,10 @@
     windows_subsystem = "windows"
 )]
 
-use ashuk_core::{converter, format_meta};
+use ashuk_core::{
+    converter::{covert_to_target_extention, ConvertStatus, CovertResult},
+    format_meta::{ImageFormat, ProcessStrategy},
+};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
@@ -11,9 +14,9 @@ use tauri::Manager;
 use env_logger;
 
 use std::collections::HashMap;
-use std::sync::Mutex;
 use std::env;
 use std::io::Write;
+use std::sync::Mutex;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InputResult {
@@ -25,9 +28,9 @@ pub struct InputResult {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileContext {
-    pub status: converter::ConvertStatus,
+    pub status: ConvertStatus,
     pub input: InputResult,
-    pub output: Option<converter::CovertResult>,
+    pub output: Option<CovertResult>,
 }
 
 type FileList = HashMap<String, FileContext>;
@@ -60,29 +63,25 @@ impl FileState {
         let mut files = self.files.lock().unwrap();
         // init data
         let file = FileContext {
-            status: converter::ConvertStatus::Initialized,
+            status: ConvertStatus::Initialized,
             input: InputResult {
                 path: file_path.to_string().clone(),
                 size: std::fs::metadata(&file_path)
                     .expect("There is no file.")
                     .len(),
-                writable_extentions: format_meta::get_formats()
+                writable_extentions: ImageFormat::get_formats()
                     .iter()
-                    .filter(|x| format_meta::ImageFormat::can_write(&x))
+                    .filter(|x| ImageFormat::can_write(&x))
                     .map(move |y| <str as ToString>::to_string(&*y.extensions_str()[0]))
                     .collect::<Vec<String>>(),
-                extention: format_meta::get_format_from_path(&file_path)
-                    .unwrap()
-                    .extensions_str()[0]
+                extention: ImageFormat::from_path(&file_path).unwrap().extensions_str()[0]
                     .to_string(),
             },
-            output: Some(converter::CovertResult {
+            output: Some(CovertResult {
                 size: 0,
                 path: "".to_string(),
                 elapsed: 0,
-                extention: format_meta::get_format_from_path(&file_path)
-                    .unwrap()
-                    .extensions_str()[0]
+                extention: ImageFormat::from_path(&file_path).unwrap().extensions_str()[0]
                     .to_string(),
             }),
         };
@@ -123,12 +122,18 @@ impl FileState {
         files.clear();
     }
 
-    pub fn process_convert(&self, app_handle: &tauri::AppHandle, emitter_name: &str, path: std::string::String, file: FileContext) {
+    pub fn process_convert(
+        &self,
+        app_handle: &tauri::AppHandle,
+        emitter_name: &str,
+        path: std::string::String,
+        file: FileContext,
+    ) {
         // update state
         let updated_file = self.update_file(
             path.clone(),
             FileContext {
-                status: converter::ConvertStatus::Pending,
+                status: ConvertStatus::Pending,
                 input: file.clone().input,
                 output: None,
             },
@@ -137,18 +142,14 @@ impl FileState {
         notify_file_to_client(&app_handle, &updated_file, emitter_name);
 
         // convert image
-        let result = converter::covert_to_target_extention(
-            &path,
-            &file.output.unwrap().extention,
-            75.0,
-        );
+        let result = covert_to_target_extention(&path, &file.output.unwrap().extention, 75.0);
 
         if result.is_ok() {
             // update state
             let updated_file = self.update_file(
                 path,
                 FileContext {
-                    status: converter::ConvertStatus::Success,
+                    status: ConvertStatus::Success,
                     input: file.input,
                     output: Some(result.unwrap()),
                 },
@@ -160,7 +161,7 @@ impl FileState {
             let updated_file = self.update_file(
                 path,
                 FileContext {
-                    status: converter::ConvertStatus::Failed,
+                    status: ConvertStatus::Failed,
                     input: file.input,
                     output: None,
                 },
@@ -189,15 +190,14 @@ struct SupportedFormatMeta {
 
 #[tauri::command]
 fn get_supported_extentions() -> Result<Vec<SupportedFormatMeta>, String> {
-    let extensions = format_meta::get_formats()
+    let extensions = ImageFormat::get_formats()
         .iter()
         .map(|x| {
             x.extensions_str().iter().map(move |y|
-                // read/write flag decided by ImageFormat that extended 'image' crate
                 SupportedFormatMeta {
                     ext: <str as ToString>::to_string(*y),
-                    readable: format_meta::ImageFormat::can_read(&x),
-                    writable: format_meta::ImageFormat::can_write(&x)
+                    readable: ImageFormat::can_read(&x),
+                    writable: ImageFormat::can_write(&x)
                 })
         })
         .flatten()
@@ -229,13 +229,13 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                 // convert
                 EmitFileOperation::Update => {
                     // wheather process parallelly or not
-                    let paralell_processable = task.clone().files.into_par_iter().all(|(path, _)|
+                    let paralell_processable =
+                        task.clone().files.into_par_iter().all(|(path, _)|
                         // process strategy with multithreading depends on it's library implementation
                         matches!(
-                            format_meta::ImageFormat::process_strategy(&format_meta::get_format_from_path(&path).unwrap()),
-                            format_meta::ProcessStrategy::Parallel
-                        )
-                    );
+                            ImageFormat::process_strategy(&ImageFormat::from_path(&path).unwrap()),
+                            ProcessStrategy::Parallel
+                        ));
 
                     match paralell_processable {
                         true => {
@@ -243,21 +243,31 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                             task.files
                                 .into_par_iter()
                                 // skip converted file
-                                .filter(|(_, file)| {
-                                    !matches!(file.status, converter::ConvertStatus::Success)
-                                })
-                                .for_each(|(path, file)| file_state.process_convert(&app_handle, &emitter_name, path, file));
+                                .filter(|(_, file)| !matches!(file.status, ConvertStatus::Success))
+                                .for_each(|(path, file)| {
+                                    file_state.process_convert(
+                                        &app_handle,
+                                        &emitter_name,
+                                        path,
+                                        file,
+                                    )
+                                });
                         }
                         _ => {
                             // process seriesly
                             task.files
                                 .into_iter()
                                 // skip converted file
-                                .filter(|(_, file)| {
-                                    !matches!(file.status, converter::ConvertStatus::Success)
-                                })
-                                .for_each(|(path, file)| file_state.process_convert(&app_handle, &emitter_name, path, file));
-                        },
+                                .filter(|(_, file)| !matches!(file.status, ConvertStatus::Success))
+                                .for_each(|(path, file)| {
+                                    file_state.process_convert(
+                                        &app_handle,
+                                        &emitter_name,
+                                        path,
+                                        file,
+                                    )
+                                });
+                        }
                     };
                 }
                 _ => {
@@ -285,7 +295,6 @@ fn init_logger() {
             )
         })
         .init();
-
 }
 
 fn main() {

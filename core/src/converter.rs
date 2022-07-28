@@ -1,16 +1,16 @@
 use image::io::Reader as ImageReader;
-use image::{ImageError};
+use image::ImageError;
 
 use mozjpeg::{ColorSpace, Compress, ScanMode};
-use webp;
 use oxipng;
+use webp;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use std::time::{Instant};
+use std::time::Instant;
 
-use crate::format_meta;
+use crate::format_meta::ImageFormat;
 
 #[derive(Error, Debug)]
 pub enum ConvertError {
@@ -64,9 +64,9 @@ pub fn covert_to_target_extention(
 ) -> Result<CovertResult, ConvertError> {
     let start = Instant::now();
 
-    let input_extention = format_meta::get_format_from_path(&file_path)?;
+    let input_extention = ImageFormat::from_path(&file_path).unwrap();
 
-    let output_extention = image::ImageFormat::from_extension(&target_extention).unwrap();
+    let output_extention = ImageFormat::from_extension(&target_extention).unwrap();
 
     let confirmed_extention = if input_extention == output_extention {
         // overwrite
@@ -80,7 +80,7 @@ pub fn covert_to_target_extention(
     };
 
     let result = match input_extention {
-        image::ImageFormat::WebP => {
+        ImageFormat::WebP => {
             let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
 
             let decoded = ImageReader::open(file_path)?.decode()?;
@@ -100,7 +100,7 @@ pub fn covert_to_target_extention(
                 extention: confirmed_extention.to_string(),
             }
         }
-        image::ImageFormat::Jpeg => {
+        ImageFormat::Jpeg => {
             let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
 
             let decoded = ImageReader::open(file_path)?.decode()?;
@@ -133,7 +133,7 @@ pub fn covert_to_target_extention(
                 extention: confirmed_extention.to_string(),
             }
         }
-        image::ImageFormat::Png => {
+        ImageFormat::Png => {
             // don't use multi process outside this function, because of oxipng process image with multithreading
             let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
 
@@ -143,7 +143,7 @@ pub fn covert_to_target_extention(
             oxipng::optimize(
                 &oxipng::InFile::Path(input),
                 &oxipng::OutFile::Path(Some(output)),
-                &oxipng::Options::max_compression()
+                &oxipng::Options::max_compression(),
             )?;
 
             let end = start.elapsed();
