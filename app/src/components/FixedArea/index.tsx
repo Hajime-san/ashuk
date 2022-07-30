@@ -1,6 +1,7 @@
 import { emit } from '@tauri-apps/api/event';
 import { useState } from 'react';
 import { useIPCQuery } from '~/hooks/useIPCQuery';
+import { useOpenDialogQuery } from '~/hooks/useOpenDialogQuery';
 import { EmitFileRequestBody } from '../InputFile';
 import './style.css';
 
@@ -94,8 +95,40 @@ const SelectOptions = () => {
 	);
 };
 
-export const FixedArea = (props: { openHandler: () => Promise<void>; optimizeHandler: () => void }) => {
-	const { openHandler, optimizeHandler } = props;
+const useOpenFileDialog = () => {
+	// get file filter extensions
+	const request = useIPCQuery<
+		Array<{
+			ext: string;
+			readable: boolean;
+			writable: boolean;
+		}>
+	>({ cmd: 'get_supported_extensions' });
+
+	const openRequest = useOpenDialogQuery(
+		['open_file'],
+		{
+			multiple: true,
+			filters: request.data
+				? [
+					{
+						name: '*',
+						// filter by readble format
+						extensions: request.data.filter((v) => v.readable).map((v) => v.ext),
+					},
+				]
+				: [],
+		},
+	);
+
+	return {
+		openHandler: () => openRequest.refetch(),
+	};
+};
+
+export const FixedArea = (props: { optimizeHandler: () => void }) => {
+	const { optimizeHandler } = props;
+	const { openHandler } = useOpenFileDialog();
 
 	const onDeleteHandler = () => {
 		const requestBody: EmitFileRequestBody = {
@@ -105,6 +138,7 @@ export const FixedArea = (props: { openHandler: () => Promise<void>; optimizeHan
 		};
 		emit('emit-file', requestBody);
 	};
+
 	return (
 		<div className='fixedArea'>
 			<SelectOptions />

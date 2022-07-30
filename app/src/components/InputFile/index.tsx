@@ -62,18 +62,14 @@ const emitFileCreate = async (payload: Array<string>) => {
 	emit('emit-file', requestBody);
 };
 
-const emitFileUpdate = async (payload: FileListObject) => {
-	const requestBody: EmitFileRequestBody = {
-		files: payload,
-		operation: 'Compress',
-		options: null,
-	};
-	emit('emit-file', requestBody);
-};
-
 const useOptimize = (files: FileListObject) => {
 	const optimizeHandler = useCallback(() => {
-		emitFileUpdate(files);
+		const requestBody: EmitFileRequestBody = {
+			files: files,
+			operation: 'Compress',
+			options: null,
+		};
+		emit('emit-file', requestBody);
 	}, [files]);
 
 	return {
@@ -199,46 +195,14 @@ const FileList = (
 	);
 };
 
-const useOpenFileDialog = () => {
-	// get file filter extensions
-	const request = useIPCQuery<
-		Array<{
-			ext: string;
-			readable: boolean;
-			writable: boolean;
-		}>
-	>({ cmd: 'get_supported_extensions' });
-
-	const openRequest = useOpenDialogQuery(
-		['open_file'],
-		{
-			multiple: true,
-			filters: request.data
-				? [
-					{
-						name: '*',
-						// filter by readble format
-						extensions: request.data.filter((v) => v.readable).map((v) => v.ext),
-					},
-				]
-				: [],
-		},
-	);
-
-	return {
-		openHandler: openRequest.refetch,
-	};
-};
-
 export const InputFile = () => {
-	const { openHandler } = useOpenFileDialog();
 	const { files } = useFileList();
 	const { optimizeHandler } = useOptimize(files);
 
 	return (
 		<div style={{ height: '100%' }}>
 			<FileList files={files} />
-			<FixedArea openHandler={openHandler as any} optimizeHandler={optimizeHandler} />
+			<FixedArea optimizeHandler={optimizeHandler} />
 		</div>
 	);
 };
