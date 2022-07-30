@@ -46,6 +46,15 @@
     color: #fff;
 }
 
+.fixedArea_delete {
+    background-color: #ff0019;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 10px;
+    cursor: pointer;
+    color: #fff;
+}
+
 .fixedArea_start {
     background-color: #2e7d32;
     display: inline-flex;

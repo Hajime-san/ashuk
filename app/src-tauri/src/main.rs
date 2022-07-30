@@ -196,9 +196,9 @@ impl FileState {
     }
 }
 
-fn notify_file_to_client(
+fn notify_file_to_client<T: ?Sized + Serialize>(
     app_handle: &tauri::AppHandle,
-    file_context: &FileContext,
+    file_context: &T,
     emitter_name: &str,
 ) {
     let serialized = serde_json::to_string(&file_context).expect("Invalid data format");
@@ -312,8 +312,8 @@ fn compress_file_handler(app: &tauri::AppHandle) {
                 EmitFileOperation::Update => {
                     file_state.update_options(task.options);
                 }
-                _ => {
-                    unimplemented!()
+                EmitFileOperation::Delete => {
+                    notify_file_to_client(&app_handle, &EmitFileOperation::Delete, "listen-delete-file");
                 }
             }
         });

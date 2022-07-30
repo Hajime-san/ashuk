@@ -88,10 +88,25 @@ const SelectOptions = () => {
 
 export const FixedArea = (props: { openHandler: () => Promise<void>; optimizeHandler: () => void }) => {
 	const { openHandler, optimizeHandler } = props;
+
+	const onDeleteHandler = () => {
+		const requestBody: EmitFileRequestBody = {
+			files: null,
+			operation: 'Delete',
+			options: null,
+		};
+		emit('emit-file', requestBody);
+	};
 	return (
 		<div className='fixedArea'>
 			<SelectOptions />
 			<div className='fixedArea_buttons'>
+				<button
+					onClick={onDeleteHandler}
+					className={'fixedArea_delete'}
+				>
+					Delete File
+				</button>
 				<button
 					onClick={openHandler}
 					className={'fixedArea_open'}

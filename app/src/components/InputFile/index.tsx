@@ -32,9 +32,11 @@ export type FileContext = {
 
 export type FileListObject = { [key in string]: FileContext };
 
+type Operation = 'Create' | 'Update' | 'Compress' | 'Delete';
+
 export type EmitFileRequestBody = {
 	files: FileListObject | null;
-	operation: 'Create' | 'Update' | 'Compress' | 'Delete';
+	operation: Operation;
 	options: CompressOptions | null;
 };
 
@@ -121,6 +123,29 @@ const useFileList = (
 				try {
 					const data = JSON.parse(event.payload) as FileContext;
 					updateFiles(data.input.path, data);
+				} catch (error) {
+					console.log(error);
+				}
+			});
+		};
+		f();
+
+		return () => {
+			if (unlisten) {
+				unlisten();
+			}
+		};
+	}, []);
+
+	useEffect(() => {
+		let unlisten: any;
+		const f = async () => {
+			unlisten = await listen<string>('listen-delete-file', (event) => {
+				try {
+					const data = JSON.parse(event.payload) as Operation;
+					if (data === 'Delete') {
+						setFiles({});
+					}
 				} catch (error) {
 					console.log(error);
 				}
