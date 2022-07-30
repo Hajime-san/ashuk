@@ -313,6 +313,7 @@ fn compress_file_handler(app: &tauri::AppHandle) {
                     file_state.update_options(task.options);
                 }
                 EmitFileOperation::Delete => {
+                    file_state.clear();
                     notify_file_to_client(&app_handle, &EmitFileOperation::Delete, "listen-delete-file");
                 }
             }
