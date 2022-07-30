@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
 use std::ffi::OsStr;
 use std::path::Path;
-use thiserror::Error;
 
 pub enum ProcessStrategy {
     Serial,
@@ -18,6 +20,15 @@ pub enum ImageFormat {
 pub enum ImageFormatError {
     #[error("file is not supported")]
     Unsupported,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CompressOptionsContext {
+    pub extention: String,
+    pub min: f32,
+    pub max: f32,
+    pub default: f32,
+    pub step: f32,
 }
 
 impl ImageFormat {
@@ -61,6 +72,14 @@ impl ImageFormat {
         }
     }
 
+    pub fn get_representative_ext_str(&self) -> String {
+        match self {
+            ImageFormat::Png => <str as ToString>::to_string(&*self.extensions_str()[0]),
+            ImageFormat::Jpeg => <str as ToString>::to_string(&*self.extensions_str()[0]),
+            ImageFormat::WebP => <str as ToString>::to_string(&*self.extensions_str()[0]),
+        }
+    }
+
     pub fn can_read(&self) -> bool {
         match self {
             ImageFormat::Png => true,
@@ -92,5 +111,31 @@ impl ImageFormat {
         let formats = vec![jpg, png, webp];
 
         formats
+    }
+
+    pub fn get_compress_options_context(&self) -> CompressOptionsContext {
+        match self {
+            ImageFormat::Png => CompressOptionsContext {
+                extention: self.get_representative_ext_str(),
+                min: 0.0,
+                max: 6.0,
+                default: 6.0,
+                step: 1.0,
+            },
+            ImageFormat::Jpeg => CompressOptionsContext {
+                extention: self.get_representative_ext_str(),
+                min: 0.0,
+                max: 100.0,
+                default: 75.0,
+                step: 0.1,
+            },
+            ImageFormat::WebP => CompressOptionsContext {
+                extention: self.get_representative_ext_str(),
+                min: 0.0,
+                max: 100.0,
+                default: 75.0,
+                step: 0.1,
+            },
+        }
     }
 }

@@ -4,8 +4,8 @@
 )]
 
 use ashuk_core::{
-    converter::{covert_to_target_extention, ConvertStatus, CovertResult},
-    format_meta::{ImageFormat, ProcessStrategy},
+    converter::{covert_to_target_extention, CompressOptions, ConvertStatus, CovertResult},
+    format_meta::{CompressOptionsContext, ImageFormat, ProcessStrategy},
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -37,25 +37,34 @@ type FileList = HashMap<String, FileContext>;
 
 pub struct FileState {
     files: Mutex<FileList>,
+    options: Mutex<CompressOptions>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum EmitFileOperation {
     Create,
     Update,
+    Compress,
     Delete,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EmitFileRequestBody {
-    files: FileList,
+    files: Option<FileList>,
     operation: EmitFileOperation,
+    options: Option<CompressOptions>,
 }
 
 impl FileState {
     pub fn new(files: FileList) -> Self {
+        // set default option
+        let option = get_compress_options_context().unwrap();
         Self {
             files: Mutex::new(files),
+            options: Mutex::new(CompressOptions {
+                extention: option[0].extention.clone(),
+                quality: Some(option[0].default),
+            }),
         }
     }
 
@@ -72,17 +81,19 @@ impl FileState {
                 writable_extentions: ImageFormat::get_formats()
                     .iter()
                     .filter(|x| ImageFormat::can_write(&x))
-                    .map(move |y| <str as ToString>::to_string(&*y.extensions_str()[0]))
+                    .map(|y| y.get_representative_ext_str())
                     .collect::<Vec<String>>(),
-                extention: ImageFormat::from_path(&file_path).unwrap().extensions_str()[0]
-                    .to_string(),
+                extention: ImageFormat::from_path(&file_path)
+                    .unwrap()
+                    .get_representative_ext_str(),
             },
             output: Some(CovertResult {
                 size: 0,
                 path: "".to_string(),
                 elapsed: 0,
-                extention: ImageFormat::from_path(&file_path).unwrap().extensions_str()[0]
-                    .to_string(),
+                extention: ImageFormat::from_path(&file_path)
+                    .unwrap()
+                    .get_representative_ext_str(),
             }),
         };
         // update hashmap
@@ -122,6 +133,11 @@ impl FileState {
         files.clear();
     }
 
+    pub fn update_options(&self, _options: Option<CompressOptions>) {
+        let mut options = self.options.lock().unwrap();
+        *options = _options.unwrap();
+    }
+
     pub fn process_convert(
         &self,
         app_handle: &tauri::AppHandle,
@@ -129,6 +145,8 @@ impl FileState {
         path: std::string::String,
         file: FileContext,
     ) {
+        // compress option
+        let options = self.options.lock().unwrap();
         // update state
         let updated_file = self.update_file(
             path.clone(),
@@ -142,7 +160,13 @@ impl FileState {
         notify_file_to_client(&app_handle, &updated_file, emitter_name);
 
         // convert image
-        let result = covert_to_target_extention(&path, &file.output.unwrap().extention, 75.0);
+        let result = covert_to_target_extention(
+            &path,
+            CompressOptions {
+                extention: options.extention.clone(),
+                quality: options.quality,
+            },
+        );
 
         if result.is_ok() {
             // update state
@@ -189,16 +213,24 @@ struct SupportedFormatMeta {
 }
 
 #[tauri::command]
+fn get_compress_options_context() -> Result<Vec<CompressOptionsContext>, String> {
+    let options = ImageFormat::get_formats()
+        .iter()
+        .map(|x| x.get_compress_options_context())
+        .collect::<Vec<CompressOptionsContext>>();
+    Ok(options)
+}
+
+#[tauri::command]
 fn get_supported_extentions() -> Result<Vec<SupportedFormatMeta>, String> {
     let extensions = ImageFormat::get_formats()
         .iter()
         .map(|x| {
-            x.extensions_str().iter().map(move |y|
-                SupportedFormatMeta {
-                    ext: <str as ToString>::to_string(*y),
-                    readable: ImageFormat::can_read(&x),
-                    writable: ImageFormat::can_write(&x)
-                })
+            x.extensions_str().iter().map(move |y| SupportedFormatMeta {
+                ext: <str as ToString>::to_string(*y),
+                readable: ImageFormat::can_read(&x),
+                writable: ImageFormat::can_write(&x),
+            })
         })
         .flatten()
         .collect::<Vec<SupportedFormatMeta>>();
@@ -220,55 +252,65 @@ fn convert_file_handler(app: &tauri::AppHandle) {
             match task.operation {
                 // notify to client for ready
                 EmitFileOperation::Create => {
-                    // process parallelly
-                    task.files.into_par_iter().for_each(|(path, _)| {
-                        let add_file = file_state.add_file(&path);
-                        notify_file_to_client(&app_handle, &add_file, emitter_name);
-                    });
+                    // check
+                    if let Some(v) = &task.files {
+                        // process parallelly
+                        v.into_par_iter().for_each(|(path, _)| {
+                            let add_file = file_state.add_file(&path);
+                            notify_file_to_client(&app_handle, &add_file, emitter_name);
+                        });
+                    };
                 }
                 // convert
-                EmitFileOperation::Update => {
-                    // wheather process parallelly or not
-                    let paralell_processable =
-                        task.clone().files.into_par_iter().all(|(path, _)|
-                        // process strategy with multithreading depends on it's library implementation
-                        matches!(
-                            ImageFormat::process_strategy(&ImageFormat::from_path(&path).unwrap()),
-                            ProcessStrategy::Parallel
-                        ));
+                EmitFileOperation::Compress => {
+                    // check
+                    if let Some(v) = &task.files {
 
-                    match paralell_processable {
-                        true => {
-                            // process parallelly
-                            task.files
-                                .into_par_iter()
-                                // skip converted file
-                                .filter(|(_, file)| !matches!(file.status, ConvertStatus::Success))
-                                .for_each(|(path, file)| {
-                                    file_state.process_convert(
-                                        &app_handle,
-                                        &emitter_name,
-                                        path,
-                                        file,
-                                    )
-                                });
-                        }
-                        _ => {
-                            // process seriesly
-                            task.files
-                                .into_iter()
-                                // skip converted file
-                                .filter(|(_, file)| !matches!(file.status, ConvertStatus::Success))
-                                .for_each(|(path, file)| {
-                                    file_state.process_convert(
-                                        &app_handle,
-                                        &emitter_name,
-                                        path,
-                                        file,
-                                    )
-                                });
-                        }
+                        // wheather process parallelly or not
+                        let paralell_processable =
+                            v.into_par_iter().all(|(path, _)|
+                            // process strategy with multithreading depends on it's library implementation
+                            matches!(
+                                ImageFormat::process_strategy(&ImageFormat::from_path(&path).unwrap()),
+                                ProcessStrategy::Parallel
+                            ));
+
+                        match paralell_processable {
+                            true => {
+                                // process parallelly
+                                v.clone()
+                                    .into_par_iter()
+                                    // skip converted file
+                                    .filter(|(_, file)| !matches!(file.status, ConvertStatus::Success))
+                                    .for_each(|(path, file)| {
+                                        file_state.process_convert(
+                                            &app_handle,
+                                            &emitter_name,
+                                            path,
+                                            file,
+                                        )
+                                    });
+                            }
+                            _ => {
+                                // process seriesly
+                                v.clone()
+                                    .into_iter()
+                                    // skip converted file
+                                    .filter(|(_, file)| !matches!(file.status, ConvertStatus::Success))
+                                    .for_each(|(path, file)| {
+                                        file_state.process_convert(
+                                            &app_handle,
+                                            &emitter_name,
+                                            path,
+                                            file,
+                                        )
+                                    });
+                            }
+                        };
                     };
+                }
+                EmitFileOperation::Update => {
+                    file_state.update_options(task.options);
                 }
                 _ => {
                     unimplemented!()
@@ -301,7 +343,10 @@ fn main() {
     init_logger();
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_supported_extentions,])
+        .invoke_handler(tauri::generate_handler![
+            get_supported_extentions,
+            get_compress_options_context,
+        ])
         .setup(|app| {
             convert_file_handler(&app.app_handle());
 

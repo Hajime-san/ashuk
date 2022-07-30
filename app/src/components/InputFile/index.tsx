@@ -13,24 +13,32 @@ type FileMeta = {
 	extention: string;
 };
 
-type FileContext = {
+type CompressOptions = {
+	quality: number;
+	extention: string;
+};
+
+export type FileContext = {
 	status: 'Initialized' | 'Pending' | 'Success' | 'Failed' | 'Unsupported';
 	input: FileMeta & {
 		writable_extentions: Array<string>;
 	};
-	output: FileMeta & {
-		elapsed: number;
-	};
+	output:
+		| FileMeta & {
+			elapsed: number;
+		}
+		| null;
 };
 
-type FileListObject = { [key in string]: FileContext };
+export type FileListObject = { [key in string]: FileContext };
 
-type EmitFileRequestBody = {
-	files: FileListObject;
-	operation: 'Create' | 'Update' | 'Delete';
+export type EmitFileRequestBody = {
+	files: FileListObject | null;
+	operation: 'Create' | 'Update' | 'Compress' | 'Delete';
+	options: CompressOptions | null;
 };
 
-const emitFile = async (payload: Array<string>) => {
+const emitFileCreate = async (payload: Array<string>) => {
 	const obj: FileListObject = {};
 	payload.forEach((key) => {
 		const file: FileContext = {
@@ -41,18 +49,14 @@ const emitFile = async (payload: Array<string>) => {
 				writable_extentions: [],
 				extention: '',
 			},
-			output: {
-				path: '',
-				size: 0,
-				elapsed: 0,
-				extention: '',
-			},
+			output: null,
 		};
 		obj[key] = file;
 	});
 	const requestBody: EmitFileRequestBody = {
 		files: obj,
 		operation: 'Create',
+		options: null,
 	};
 	emit('emit-file', requestBody);
 };
@@ -60,7 +64,8 @@ const emitFile = async (payload: Array<string>) => {
 const emitFileUpdate = async (payload: FileListObject) => {
 	const requestBody: EmitFileRequestBody = {
 		files: payload,
-		operation: 'Update',
+		operation: 'Compress',
+		options: null,
 	};
 	emit('emit-file', requestBody);
 };
@@ -102,7 +107,7 @@ const useFileList = (
 		if (!openedFiles || openedFiles.length === 0 || !Array.isArray(openedFiles)) {
 			return;
 		}
-		emitFile(openedFiles);
+		emitFileCreate(openedFiles);
 	}, [openedFiles]);
 
 	useEffect(() => {
@@ -137,9 +142,9 @@ const useFileList = (
 };
 
 const FileList = (
-	props: { files: FileListObject; updateFiles: (key: string, value: FileContext) => void },
+	props: { files: FileListObject },
 ) => {
-	const { files, updateFiles } = props;
+	const { files } = props;
 
 	return (
 		<div className='container'>
@@ -147,7 +152,6 @@ const FileList = (
 				<li>filename</li>
 				<li>size</li>
 				<li>optimized</li>
-				<li>target</li>
 			</ul>
 			{Object.entries(files).map(([key, item], i) => {
 				const convertedFile = item.status === 'Success';
@@ -156,7 +160,7 @@ const FileList = (
 					<ul
 						style={{
 							display: 'grid',
-							gridTemplateColumns: '2fr 1fr 1fr 1fr',
+							gridTemplateColumns: '3fr 1fr 1fr',
 							columnGap: '1rem',
 							justifyContent: 'space-between',
 							padding: '0.2rem',
@@ -169,24 +173,7 @@ const FileList = (
 							{convertedFile && <span>✅</span>}
 						</li>
 						<li>{formatBytes(item.input.size)}</li>
-						<li>{convertedFile ? formatBytes(item.output.size) : ''}</li>
-						<li>
-							<select
-								name={'target-' + String(key)}
-								id={'target-' + String(key)}
-								defaultValue={item.input.extention}
-								onChange={(e) => {
-									updateFiles(key, {
-										...item,
-										...{ output: { ...item.output, extention: e.target.value } },
-									});
-								}}
-							>
-								{item.input.writable_extentions.map((v) => {
-									return <option value={v} key={v}>{v}</option>;
-								})}
-							</select>
-						</li>
+						<li>{convertedFile ? formatBytes(item.output?.size!) : ''}</li>
 					</ul>
 				);
 			})}
@@ -224,7 +211,7 @@ export const InputFile = () => {
 
 	return (
 		<div style={{ height: '100%' }}>
-			<FileList files={files} updateFiles={updateFiles} />
+			<FileList files={files} />
 			<FixedArea openHandler={openHandler} optimizeHandler={optimizeHandler} />
 		</div>
 	);

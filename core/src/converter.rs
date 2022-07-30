@@ -14,6 +14,8 @@ use crate::format_meta::ImageFormat;
 
 #[derive(Error, Debug)]
 pub enum ConvertError {
+    #[error("This operation from {0} to {1} is not supported")]
+    Unsupported(String, String),
     #[error(transparent)]
     PngError(#[from] oxipng::PngError),
     #[error("file io error: {0}")]
@@ -57,16 +59,23 @@ pub struct CovertResult {
     pub extention: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CompressOptions {
+    pub quality: Option<f32>,
+    pub extention: String,
+}
+
 pub fn covert_to_target_extention(
     file_path: &str,
-    target_extention: &str,
-    quality: f32,
+    options: CompressOptions,
 ) -> Result<CovertResult, ConvertError> {
     let start = Instant::now();
 
+    let options = options.clone();
+
     let input_extention = ImageFormat::from_path(&file_path).unwrap();
 
-    let output_extention = ImageFormat::from_extension(&target_extention).unwrap();
+    let output_extention = ImageFormat::from_extension(&options.clone().extention).unwrap();
 
     let confirmed_extention = if input_extention == output_extention {
         // overwrite
@@ -76,10 +85,10 @@ pub fn covert_to_target_extention(
             .unwrap()
     } else {
         // alter extention
-        target_extention
+        &options.extention
     };
 
-    let result = match input_extention {
+    let result = match output_extention {
         ImageFormat::WebP => {
             let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
 
@@ -87,7 +96,7 @@ pub fn covert_to_target_extention(
 
             let encoder = webp::Encoder::from_image(&decoded).unwrap();
 
-            let contents = encoder.encode(quality);
+            let contents = encoder.encode(options.clone().quality.unwrap_or(75.0));
 
             std::fs::write(&output_file_path, &*contents)?;
 
@@ -109,7 +118,7 @@ pub fn covert_to_target_extention(
             let width = decoded.width() as usize;
             let height = decoded.height() as usize;
             comp.set_scan_optimization_mode(ScanMode::AllComponentsTogether);
-            comp.set_quality(quality);
+            comp.set_quality(options.clone().quality.unwrap_or(75.0));
 
             comp.set_size(width, height);
 
@@ -143,7 +152,7 @@ pub fn covert_to_target_extention(
             oxipng::optimize(
                 &oxipng::InFile::Path(input),
                 &oxipng::OutFile::Path(Some(output)),
-                &oxipng::Options::max_compression(),
+                &oxipng::Options::from_preset(options.clone().quality.unwrap_or(6.0) as u8),
             )?;
 
             let end = start.elapsed();
