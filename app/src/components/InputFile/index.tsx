@@ -4,7 +4,7 @@ import { valueOf } from '~/types/util';
 import { emit, listen } from '@tauri-apps/api/event';
 
 import './style.css';
-import { useInternalProcess } from '~/hooks/useInternalProcess';
+import { useIPC } from '~/hooks/useIPC';
 import { FixedArea } from '../FixedArea';
 
 type FileMeta = {
@@ -206,7 +206,7 @@ const FileList = (
 };
 
 const useOpenFileDialog = () => {
-	const request = useInternalProcess<
+	const request = useIPC<
 		Array<{
 			ext: string;
 			readable: boolean;

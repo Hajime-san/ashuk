@@ -1,6 +1,6 @@
 import { emit } from '@tauri-apps/api/event';
 import { useCallback, useEffect, useState } from 'react';
-import { useInternalProcess } from '~/hooks/useInternalProcess';
+import { useIPC } from '~/hooks/useIPC';
 import { EmitFileRequestBody } from '../InputFile';
 import './style.css';
 
@@ -13,7 +13,7 @@ type CompressOptionsContext = {
 };
 
 const SelectOptions = () => {
-	const { response } = useInternalProcess<Array<CompressOptionsContext>>('get_compress_options_context');
+	const { response } = useIPC<Array<CompressOptionsContext>>('get_compress_options_context');
 	const [currentOption, setCurrentOption] = useState<CompressOptionsContext | null>(null);
 
 	useEffect(() => {
