@@ -1,6 +1,6 @@
 import { emit } from '@tauri-apps/api/event';
-import { useCallback, useEffect, useState } from 'react';
-import { useIPC } from '~/hooks/useIPC';
+import { useState } from 'react';
+import { useIPCQuery } from '~/hooks/useIPCQuery';
 import { EmitFileRequestBody } from '../InputFile';
 import './style.css';
 
@@ -13,21 +13,28 @@ type CompressOptionsContext = {
 };
 
 const SelectOptions = () => {
-	const { response } = useIPC<Array<CompressOptionsContext>>('get_compress_options_context');
+	const [options, setOptions] = useState<Array<CompressOptionsContext> | null>(null);
 	const [currentOption, setCurrentOption] = useState<CompressOptionsContext | null>(null);
+	const request = useIPCQuery<Array<CompressOptionsContext>>({ cmd: 'get_compress_options_context' }, {
+		onSuccess: (payload) => {
+			const validatedOption = payload.map((v) => {
+				return {
+					...v,
+					// convert step to 0.1
+					step: Number.isInteger(v.step) ? v.step : Number(v.step.toFixed(1)),
+				};
+			});
+			setOptions(validatedOption);
+			setCurrentOption(validatedOption[0]);
+		},
+	});
 
-	useEffect(() => {
-		if (!response) {
-			return;
-		}
-		setCurrentOption(response[0]);
-	}, [response]);
-
+	// update on extension changed
 	const onChangeSelectHandler = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		if (!response) {
+		if (!options) {
 			return;
 		}
-		const _currentOption = response.find((v) => v.extension === e.target.value)!;
+		const _currentOption = options.find((v) => v.extension === e.target.value)!;
 		// update view
 		setCurrentOption(_currentOption);
 
@@ -43,6 +50,7 @@ const SelectOptions = () => {
 		emit('emit-file', requestBody);
 	};
 
+	// update on compress option number changed
 	const onChangeInputHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const requestBody: EmitFileRequestBody = {
 			files: null,
@@ -57,7 +65,7 @@ const SelectOptions = () => {
 
 	return (
 		<div className='fixedArea_options'>
-			{response
+			{options
 				? (
 					<div className='fixedArea_options_box'>
 						<select
@@ -65,7 +73,7 @@ const SelectOptions = () => {
 							onChange={onChangeSelectHandler}
 							id='CompressOptionsContext'
 						>
-							{response.map((item) => {
+							{options.map((item) => {
 								return <option value={item.extension} key={item.extension}>{item.extension}</option>;
 							})}
 						</select>

@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useOpen } from '~/hooks/useOpen';
-import { valueOf } from '~/types/util';
+import { useOpenDialogQuery } from '~/hooks/useOpenDialogQuery';
 import { emit, listen } from '@tauri-apps/api/event';
 
 import './style.css';
-import { useIPC } from '~/hooks/useIPC';
+import { useIPCQuery } from '~/hooks/useIPCQuery';
 import { FixedArea } from '../FixedArea';
 
 type FileMeta = {
@@ -94,9 +93,15 @@ const formatBytes = (bytes: number, decimals = 2) => {
 	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
-const useFileList = (
-	openedFiles: valueOf<Pick<ReturnType<typeof useOpen>, 'response'>>,
-) => {
+const useFileList = () => {
+	const request = useOpenDialogQuery(['open_file'], undefined, {
+		onSuccess: (payload) => {
+			if (!payload || !Array.isArray(payload) || payload.length === 0) {
+				return;
+			}
+			emitFileCreate(payload);
+		},
+	});
 	const [files, setFiles] = useState<FileListObject>({});
 
 	const updateFiles = useCallback((key: string, value: FileContext) => {
@@ -104,17 +109,6 @@ const useFileList = (
 			return { ...obj, ...{ [key]: value } };
 		});
 	}, []);
-
-	const openFiles = useCallback(() => {
-		if (!openedFiles || openedFiles.length === 0 || !Array.isArray(openedFiles)) {
-			return;
-		}
-		emitFileCreate(openedFiles);
-	}, [openedFiles]);
-
-	useEffect(() => {
-		openFiles();
-	}, [openedFiles]);
 
 	useEffect(() => {
 		let unlisten: any;
@@ -206,37 +200,45 @@ const FileList = (
 };
 
 const useOpenFileDialog = () => {
-	const request = useIPC<
+	// get file filter extensions
+	const request = useIPCQuery<
 		Array<{
 			ext: string;
 			readable: boolean;
 			writable: boolean;
 		}>
-	>('get_supported_extensions');
-	const open = useOpen({
-		multiple: true,
-		filters: request.response
-			? [
-				{
-					name: '*',
-					// filter by readble format
-					extensions: request.response.filter((v) => v.readable).map((v) => v.ext),
-				},
-			]
-			: [],
-	});
-	return open;
+	>({ cmd: 'get_supported_extensions' });
+
+	const openRequest = useOpenDialogQuery(
+		['open_file'],
+		{
+			multiple: true,
+			filters: request.data
+				? [
+					{
+						name: '*',
+						// filter by readble format
+						extensions: request.data.filter((v) => v.readable).map((v) => v.ext),
+					},
+				]
+				: [],
+		},
+	);
+
+	return {
+		openHandler: openRequest.refetch,
+	};
 };
 
 export const InputFile = () => {
-	const { response, error, openHandler } = useOpenFileDialog();
-	const { files } = useFileList(response);
+	const { openHandler } = useOpenFileDialog();
+	const { files } = useFileList();
 	const { optimizeHandler } = useOptimize(files);
 
 	return (
 		<div style={{ height: '100%' }}>
 			<FileList files={files} />
-			<FixedArea openHandler={openHandler} optimizeHandler={optimizeHandler} />
+			<FixedArea openHandler={openHandler as any} optimizeHandler={optimizeHandler} />
 		</div>
 	);
 };
