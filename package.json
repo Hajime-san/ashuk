@@ -1,7 +1,12 @@
 {
   "scripts": {
+    "prepare": "husky install",
     "lint:ts": "cd app && deno lint -c deno.json",
+    "fmt": "yarn fmt:ts && yarn fmt:rust",
     "fmt:ts": "cd app && deno fmt -c deno.json",
     "fmt:rust": "cd core && cargo fmt && cd ../app/src-tauri && cargo fmt"
+  },
+  "devDependencies": {
+    "husky": "^8.0.1"
   }
 }
