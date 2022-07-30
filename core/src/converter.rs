@@ -24,19 +24,19 @@ pub enum ConvertError {
     Unknown(#[from] ImageError),
 }
 
-fn set_file_to_same_dir(file_path: &str, extention: &str) -> String {
+fn set_file_to_same_dir(file_path: &str, extension: &str) -> String {
     let path = std::path::Path::new(file_path);
 
-    let ext = ".".to_string() + extention;
+    let ext = ".".to_string() + extension;
 
     let output_file_path =
         // dirname
         path.parent().unwrap().to_string_lossy()
         // add separator
         + std::borrow::Cow::from(std::path::MAIN_SEPARATOR.to_string())
-        // add filename without extention
+        // add filename without extension
         + path.file_stem().unwrap().to_string_lossy()
-        // add extention
+        // add extension
         + std::path::Path::new(&ext).to_string_lossy();
 
     output_file_path.to_string()
@@ -56,16 +56,16 @@ pub struct CovertResult {
     pub size: u64,
     pub path: String,
     pub elapsed: u64,
-    pub extention: String,
+    pub extension: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CompressOptions {
     pub quality: Option<f32>,
-    pub extention: String,
+    pub extension: String,
 }
 
-pub fn covert_to_target_extention(
+pub fn covert_to_target_extension(
     file_path: &str,
     options: CompressOptions,
 ) -> Result<CovertResult, ConvertError> {
@@ -73,24 +73,24 @@ pub fn covert_to_target_extention(
 
     let options = options.clone();
 
-    let input_extention = ImageFormat::from_path(&file_path).unwrap();
+    let input_extension = ImageFormat::from_path(&file_path).unwrap();
 
-    let output_extention = ImageFormat::from_extension(&options.clone().extention).unwrap();
+    let output_extension = ImageFormat::from_extension(&options.clone().extension).unwrap();
 
-    let confirmed_extention = if input_extention == output_extention {
+    let confirmed_extension = if input_extension == output_extension {
         // overwrite
         std::path::Path::new(file_path)
             .extension()
             .and_then(std::ffi::OsStr::to_str)
             .unwrap()
     } else {
-        // alter extention
-        &options.extention
+        // alter extension
+        &options.extension
     };
 
-    let result = match output_extention {
+    let result = match output_extension {
         ImageFormat::WebP => {
-            let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
+            let output_file_path = set_file_to_same_dir(&file_path, confirmed_extension);
 
             let decoded = ImageReader::open(file_path)?.decode()?;
 
@@ -106,11 +106,11 @@ pub fn covert_to_target_extention(
                 size: std::fs::metadata(&output_file_path)?.len(),
                 path: output_file_path.clone(),
                 elapsed: end.as_millis() as u64,
-                extention: confirmed_extention.to_string(),
+                extension: confirmed_extension.to_string(),
             }
         }
         ImageFormat::Jpeg => {
-            let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
+            let output_file_path = set_file_to_same_dir(&file_path, confirmed_extension);
 
             let decoded = ImageReader::open(file_path)?.decode()?;
 
@@ -139,12 +139,12 @@ pub fn covert_to_target_extention(
                 size: std::fs::metadata(&output_file_path)?.len(),
                 path: output_file_path.clone(),
                 elapsed: end.as_millis() as u64,
-                extention: confirmed_extention.to_string(),
+                extension: confirmed_extension.to_string(),
             }
         }
         ImageFormat::Png => {
             // don't use multi process outside this function, because of oxipng process image with multithreading
-            let output_file_path = set_file_to_same_dir(&file_path, confirmed_extention);
+            let output_file_path = set_file_to_same_dir(&file_path, confirmed_extension);
 
             let input = std::path::PathBuf::from(&file_path);
             let output = std::path::PathBuf::from(&output_file_path);
@@ -161,7 +161,7 @@ pub fn covert_to_target_extention(
                 size: std::fs::metadata(&output_file_path)?.len(),
                 path: output_file_path.clone(),
                 elapsed: end.as_millis() as u64,
-                extention: confirmed_extention.to_string(),
+                extension: confirmed_extension.to_string(),
             }
         }
         _ => {

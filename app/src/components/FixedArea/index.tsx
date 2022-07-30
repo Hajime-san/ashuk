@@ -5,7 +5,7 @@ import { EmitFileRequestBody } from '../InputFile';
 import './style.css';
 
 type CompressOptionsContext = {
-	extention: string;
+	extension: string;
 	min: number;
 	max: number;
 	default: number;
@@ -27,7 +27,7 @@ const SelectOptions = () => {
 		if (!response) {
 			return;
 		}
-		const _currentOption = response.find((v) => v.extention === e.target.value)!;
+		const _currentOption = response.find((v) => v.extension === e.target.value)!;
 		// update view
 		setCurrentOption(_currentOption);
 
@@ -37,7 +37,7 @@ const SelectOptions = () => {
 			operation: 'Update',
 			options: {
 				quality: _currentOption.default,
-				extention: _currentOption.extention,
+				extension: _currentOption.extension,
 			},
 		};
 		emit('emit-file', requestBody);
@@ -49,7 +49,7 @@ const SelectOptions = () => {
 			operation: 'Update',
 			options: {
 				quality: Number(e.target.value),
-				extention: currentOption?.extention!,
+				extension: currentOption?.extension!,
 			},
 		};
 		emit('emit-file', requestBody);
@@ -66,7 +66,7 @@ const SelectOptions = () => {
 							id='CompressOptionsContext'
 						>
 							{response.map((item) => {
-								return <option value={item.extention} key={item.extention}>{item.extention}</option>;
+								return <option value={item.extension} key={item.extension}>{item.extension}</option>;
 							})}
 						</select>
 						<input

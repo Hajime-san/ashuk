@@ -4,7 +4,7 @@
 )]
 
 use ashuk_core::{
-    converter::{covert_to_target_extention, CompressOptions, ConvertStatus, CovertResult},
+    converter::{covert_to_target_extension, CompressOptions, ConvertStatus, CovertResult},
     format_meta::{CompressOptionsContext, ImageFormat, ProcessStrategy},
 };
 use rayon::prelude::*;
@@ -22,8 +22,8 @@ use std::sync::Mutex;
 pub struct InputResult {
     pub path: String,
     pub size: u64,
-    pub writable_extentions: Vec<String>,
-    pub extention: String,
+    pub writable_extensions: Vec<String>,
+    pub extension: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -62,7 +62,7 @@ impl FileState {
         Self {
             files: Mutex::new(files),
             options: Mutex::new(CompressOptions {
-                extention: option[0].extention.clone(),
+                extension: option[0].extension.clone(),
                 quality: Some(option[0].default),
             }),
         }
@@ -78,12 +78,12 @@ impl FileState {
                 size: std::fs::metadata(&file_path)
                     .expect("There is no file.")
                     .len(),
-                writable_extentions: ImageFormat::get_formats()
+                writable_extensions: ImageFormat::get_formats()
                     .iter()
                     .filter(|x| ImageFormat::can_write(&x))
                     .map(|y| y.get_representative_ext_str())
                     .collect::<Vec<String>>(),
-                extention: ImageFormat::from_path(&file_path)
+                extension: ImageFormat::from_path(&file_path)
                     .unwrap()
                     .get_representative_ext_str(),
             },
@@ -91,7 +91,7 @@ impl FileState {
                 size: 0,
                 path: "".to_string(),
                 elapsed: 0,
-                extention: ImageFormat::from_path(&file_path)
+                extension: ImageFormat::from_path(&file_path)
                     .unwrap()
                     .get_representative_ext_str(),
             }),
@@ -160,10 +160,10 @@ impl FileState {
         notify_file_to_client(&app_handle, &updated_file, emitter_name);
 
         // convert image
-        let result = covert_to_target_extention(
+        let result = covert_to_target_extension(
             &path,
             CompressOptions {
-                extention: options.extention.clone(),
+                extension: options.extension.clone(),
                 quality: options.quality,
             },
         );
@@ -222,7 +222,7 @@ fn get_compress_options_context() -> Result<Vec<CompressOptionsContext>, String>
 }
 
 #[tauri::command]
-fn get_supported_extentions() -> Result<Vec<SupportedFormatMeta>, String> {
+fn get_supported_extensions() -> Result<Vec<SupportedFormatMeta>, String> {
     let extensions = ImageFormat::get_formats()
         .iter()
         .map(|x| {
@@ -344,7 +344,7 @@ fn main() {
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            get_supported_extentions,
+            get_supported_extensions,
             get_compress_options_context,
         ])
         .setup(|app| {

@@ -10,18 +10,18 @@ import { FixedArea } from '../FixedArea';
 type FileMeta = {
 	path: string;
 	size: number;
-	extention: string;
+	extension: string;
 };
 
 type CompressOptions = {
 	quality: number;
-	extention: string;
+	extension: string;
 };
 
 export type FileContext = {
 	status: 'Initialized' | 'Pending' | 'Success' | 'Failed' | 'Unsupported';
 	input: FileMeta & {
-		writable_extentions: Array<string>;
+		writable_extensions: Array<string>;
 	};
 	output:
 		| FileMeta & {
@@ -46,8 +46,8 @@ const emitFileCreate = async (payload: Array<string>) => {
 			input: {
 				path: key,
 				size: 0,
-				writable_extentions: [],
-				extention: '',
+				writable_extensions: [],
+				extension: '',
 			},
 			output: null,
 		};
@@ -188,7 +188,7 @@ const useOpenFileDialog = () => {
 			readable: boolean;
 			writable: boolean;
 		}>
-	>('get_supported_extentions');
+	>('get_supported_extensions');
 	const open = useOpen({
 		multiple: true,
 		filters: request.response

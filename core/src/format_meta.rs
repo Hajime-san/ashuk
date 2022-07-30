@@ -24,7 +24,7 @@ pub enum ImageFormatError {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CompressOptionsContext {
-    pub extention: String,
+    pub extension: String,
     pub min: f32,
     pub max: f32,
     pub default: f32,
@@ -116,21 +116,21 @@ impl ImageFormat {
     pub fn get_compress_options_context(&self) -> CompressOptionsContext {
         match self {
             ImageFormat::Png => CompressOptionsContext {
-                extention: self.get_representative_ext_str(),
+                extension: self.get_representative_ext_str(),
                 min: 0.0,
                 max: 6.0,
                 default: 6.0,
                 step: 1.0,
             },
             ImageFormat::Jpeg => CompressOptionsContext {
-                extention: self.get_representative_ext_str(),
+                extension: self.get_representative_ext_str(),
                 min: 0.0,
                 max: 100.0,
                 default: 75.0,
                 step: 0.1,
             },
             ImageFormat::WebP => CompressOptionsContext {
-                extention: self.get_representative_ext_str(),
+                extension: self.get_representative_ext_str(),
                 min: 0.0,
                 max: 100.0,
                 default: 75.0,
