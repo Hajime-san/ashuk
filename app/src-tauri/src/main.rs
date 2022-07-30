@@ -4,7 +4,7 @@
 )]
 
 use ashuk_core::{
-    converter::{covert_to_target_extension, CompressOptions, ConvertStatus, CovertResult},
+    compresser::{compress_to_target_extension, CompressOptions, Result as CompressResult, Status},
     format_meta::{CompressOptionsContext, ImageFormat, ProcessStrategy},
 };
 use rayon::prelude::*;
@@ -28,9 +28,9 @@ pub struct InputResult {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileContext {
-    pub status: ConvertStatus,
+    pub status: Status,
     pub input: InputResult,
-    pub output: Option<CovertResult>,
+    pub output: Option<CompressResult>,
 }
 
 type FileList = HashMap<String, FileContext>;
@@ -72,7 +72,7 @@ impl FileState {
         let mut files = self.files.lock().unwrap();
         // init data
         let file = FileContext {
-            status: ConvertStatus::Initialized,
+            status: Status::Initialized,
             input: InputResult {
                 path: file_path.to_string().clone(),
                 size: std::fs::metadata(&file_path)
@@ -87,7 +87,7 @@ impl FileState {
                     .unwrap()
                     .get_representative_ext_str(),
             },
-            output: Some(CovertResult {
+            output: Some(CompressResult {
                 size: 0,
                 path: "".to_string(),
                 elapsed: 0,
@@ -138,7 +138,7 @@ impl FileState {
         *options = _options.unwrap();
     }
 
-    pub fn process_convert(
+    pub fn process_compress(
         &self,
         app_handle: &tauri::AppHandle,
         emitter_name: &str,
@@ -151,16 +151,16 @@ impl FileState {
         let updated_file = self.update_file(
             path.clone(),
             FileContext {
-                status: ConvertStatus::Pending,
+                status: Status::Pending,
                 input: file.clone().input,
                 output: None,
             },
         );
-        // notify to client for start converting
+        // notify to client for start compressing
         notify_file_to_client(&app_handle, &updated_file, emitter_name);
 
-        // convert image
-        let result = covert_to_target_extension(
+        // compress image
+        let result = compress_to_target_extension(
             &path,
             CompressOptions {
                 extension: options.extension.clone(),
@@ -173,7 +173,7 @@ impl FileState {
             let updated_file = self.update_file(
                 path,
                 FileContext {
-                    status: ConvertStatus::Success,
+                    status: Status::Success,
                     input: file.input,
                     output: Some(result.unwrap()),
                 },
@@ -185,7 +185,7 @@ impl FileState {
             let updated_file = self.update_file(
                 path,
                 FileContext {
-                    status: ConvertStatus::Failed,
+                    status: Status::Failed,
                     input: file.input,
                     output: None,
                 },
@@ -237,7 +237,7 @@ fn get_supported_extensions() -> Result<Vec<SupportedFormatMeta>, String> {
     Ok(extensions)
 }
 
-fn convert_file_handler(app: &tauri::AppHandle) {
+fn compress_file_handler(app: &tauri::AppHandle) {
     let emitter_name = "listen-file";
     let file_state = FileState::new(HashMap::new());
     let app_handle = app.app_handle();
@@ -261,7 +261,7 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                         });
                     };
                 }
-                // convert
+                // compress
                 EmitFileOperation::Compress => {
                     // check
                     if let Some(v) = &task.files {
@@ -280,10 +280,10 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                                 // process parallelly
                                 v.clone()
                                     .into_par_iter()
-                                    // skip converted file
-                                    .filter(|(_, file)| !matches!(file.status, ConvertStatus::Success))
+                                    // skip compressed file
+                                    .filter(|(_, file)| !matches!(file.status, Status::Success))
                                     .for_each(|(path, file)| {
-                                        file_state.process_convert(
+                                        file_state.process_compress(
                                             &app_handle,
                                             &emitter_name,
                                             path,
@@ -295,10 +295,10 @@ fn convert_file_handler(app: &tauri::AppHandle) {
                                 // process seriesly
                                 v.clone()
                                     .into_iter()
-                                    // skip converted file
-                                    .filter(|(_, file)| !matches!(file.status, ConvertStatus::Success))
+                                    // skip compressed file
+                                    .filter(|(_, file)| !matches!(file.status, Status::Success))
                                     .for_each(|(path, file)| {
-                                        file_state.process_convert(
+                                        file_state.process_compress(
                                             &app_handle,
                                             &emitter_name,
                                             path,
@@ -348,7 +348,7 @@ fn main() {
             get_compress_options_context,
         ])
         .setup(|app| {
-            convert_file_handler(&app.app_handle());
+            compress_file_handler(&app.app_handle());
 
             #[cfg(debug_assertions)]
             app.get_window("main").unwrap().open_devtools();

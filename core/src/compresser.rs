@@ -8,24 +8,30 @@ use webp;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use std::borrow;
+use std::ffi::OsStr;
+use std::fs;
+use std::io;
+use std::path;
+use std::result;
 use std::time::Instant;
 
 use crate::format_meta::ImageFormat;
 
 #[derive(Error, Debug)]
-pub enum ConvertError {
+pub enum CompressError {
     #[error("This operation from {0} to {1} is not supported")]
     Unsupported(String, String),
     #[error(transparent)]
     PngError(#[from] oxipng::PngError),
     #[error("file io error: {0}")]
-    Disconnect(#[from] std::io::Error),
+    Disconnect(#[from] io::Error),
     #[error("unknown error: {0}")]
     Unknown(#[from] ImageError),
 }
 
 fn set_file_to_same_dir(file_path: &str, extension: &str) -> String {
-    let path = std::path::Path::new(file_path);
+    let path = path::Path::new(file_path);
 
     let ext = ".".to_string() + extension;
 
@@ -33,17 +39,17 @@ fn set_file_to_same_dir(file_path: &str, extension: &str) -> String {
         // dirname
         path.parent().unwrap().to_string_lossy()
         // add separator
-        + std::borrow::Cow::from(std::path::MAIN_SEPARATOR.to_string())
+        + borrow::Cow::from(path::MAIN_SEPARATOR.to_string())
         // add filename without extension
         + path.file_stem().unwrap().to_string_lossy()
         // add extension
-        + std::path::Path::new(&ext).to_string_lossy();
+        + path::Path::new(&ext).to_string_lossy();
 
     output_file_path.to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub enum ConvertStatus {
+pub enum Status {
     Initialized,
     Pending,
     Success,
@@ -52,7 +58,7 @@ pub enum ConvertStatus {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CovertResult {
+pub struct Result {
     pub size: u64,
     pub path: String,
     pub elapsed: u64,
@@ -65,10 +71,10 @@ pub struct CompressOptions {
     pub extension: String,
 }
 
-pub fn covert_to_target_extension(
+pub fn compress_to_target_extension(
     file_path: &str,
     options: CompressOptions,
-) -> Result<CovertResult, ConvertError> {
+) -> result::Result<Result, CompressError> {
     let start = Instant::now();
 
     let options = options.clone();
@@ -79,9 +85,9 @@ pub fn covert_to_target_extension(
 
     let confirmed_extension = if input_extension == output_extension {
         // overwrite
-        std::path::Path::new(file_path)
+        path::Path::new(file_path)
             .extension()
-            .and_then(std::ffi::OsStr::to_str)
+            .and_then(OsStr::to_str)
             .unwrap()
     } else {
         // alter extension
@@ -98,12 +104,12 @@ pub fn covert_to_target_extension(
 
             let contents = encoder.encode(options.clone().quality.unwrap_or(75.0));
 
-            std::fs::write(&output_file_path, &*contents)?;
+            fs::write(&output_file_path, &*contents)?;
 
             let end = start.elapsed();
 
-            CovertResult {
-                size: std::fs::metadata(&output_file_path)?.len(),
+            Result {
+                size: fs::metadata(&output_file_path)?.len(),
                 path: output_file_path.clone(),
                 elapsed: end.as_millis() as u64,
                 extension: confirmed_extension.to_string(),
@@ -131,12 +137,12 @@ pub fn covert_to_target_extension(
             comp.finish_compress();
             let contents = comp.data_to_vec().unwrap();
 
-            std::fs::write(&output_file_path, contents)?;
+            fs::write(&output_file_path, contents)?;
 
             let end = start.elapsed();
 
-            CovertResult {
-                size: std::fs::metadata(&output_file_path)?.len(),
+            Result {
+                size: fs::metadata(&output_file_path)?.len(),
                 path: output_file_path.clone(),
                 elapsed: end.as_millis() as u64,
                 extension: confirmed_extension.to_string(),
@@ -146,8 +152,8 @@ pub fn covert_to_target_extension(
             // don't use multi process outside this function, because of oxipng process image with multithreading
             let output_file_path = set_file_to_same_dir(&file_path, confirmed_extension);
 
-            let input = std::path::PathBuf::from(&file_path);
-            let output = std::path::PathBuf::from(&output_file_path);
+            let input = path::PathBuf::from(&file_path);
+            let output = path::PathBuf::from(&output_file_path);
 
             oxipng::optimize(
                 &oxipng::InFile::Path(input),
@@ -157,8 +163,8 @@ pub fn covert_to_target_extension(
 
             let end = start.elapsed();
 
-            CovertResult {
-                size: std::fs::metadata(&output_file_path)?.len(),
+            Result {
+                size: fs::metadata(&output_file_path)?.len(),
                 path: output_file_path.clone(),
                 elapsed: end.as_millis() as u64,
                 extension: confirmed_extension.to_string(),

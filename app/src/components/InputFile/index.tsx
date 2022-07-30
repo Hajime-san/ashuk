@@ -137,7 +137,6 @@ const useFileList = (
 
 	return {
 		files,
-		updateFiles,
 	};
 };
 
@@ -154,7 +153,7 @@ const FileList = (
 				<li>optimized</li>
 			</ul>
 			{Object.entries(files).map(([key, item], i) => {
-				const convertedFile = item.status === 'Success';
+				const compressedFile = item.status === 'Success';
 				const bgColor = i % 2 === 0 ? 'rgb(225 224 224)' : '#fafafa';
 				return (
 					<ul
@@ -170,10 +169,10 @@ const FileList = (
 					>
 						<li>
 							<span>{item.input.path}</span>
-							{convertedFile && <span>✅</span>}
+							{compressedFile && <span>✅</span>}
 						</li>
 						<li>{formatBytes(item.input.size)}</li>
-						<li>{convertedFile ? formatBytes(item.output?.size!) : ''}</li>
+						<li>{compressedFile ? formatBytes(item.output?.size!) : ''}</li>
 					</ul>
 				);
 			})}
@@ -206,7 +205,7 @@ const useOpenFileDialog = () => {
 
 export const InputFile = () => {
 	const { response, error, openHandler } = useOpenFileDialog();
-	const { files, updateFiles } = useFileList(response);
+	const { files } = useFileList(response);
 	const { optimizeHandler } = useOptimize(files);
 
 	return (
