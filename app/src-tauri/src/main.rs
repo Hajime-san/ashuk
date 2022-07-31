@@ -320,7 +320,6 @@ fn compress_file_handler(app: &tauri::AppHandle) {
         });
 }
 
-#[cfg(debug_assertions)]
 fn init_logger() {
     env::set_var("RUST_LOG", "debug");
     env_logger::Builder::from_default_env()
@@ -341,6 +340,7 @@ fn init_logger() {
 }
 
 fn main() {
+    #[cfg(debug_assertions)]
     init_logger();
 
     tauri::Builder::default()
