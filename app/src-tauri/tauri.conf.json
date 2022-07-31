@@ -7,12 +7,39 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "ashuk-app",
+    "productName": "ashuk",
     "version": "0.1.0"
   },
   "tauri": {
     "allowlist": {
-      "all": true
+      "fs": {
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true
+      },
+      "window": {
+        "all": true
+      },
+      "shell": {
+        "all": false
+      },
+      "dialog": {
+        "ask": true,
+        "confirm": true,
+        "message": true,
+        "open": true
+      },
+      "globalShortcut": {
+        "all": true
+      },
+      "path": {
+        "all": true
+      },
+      "process": {
+        "exit": true,
+        "relaunch": true,
+        "relaunchDangerousAllowSymlinkMacos": false
+      }
     },
     "bundle": {
       "active": true,
@@ -48,7 +75,8 @@
       }
     },
     "security": {
-      "csp": null
+      "csp": null,
+      "freezePrototype": true
     },
     "updater": {
       "active": false
