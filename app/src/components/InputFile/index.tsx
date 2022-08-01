@@ -23,9 +23,7 @@ type CompressOptions = {
 
 export type FileContext = {
 	status: 'Initialized' | 'Pending' | 'Success' | 'Failed' | 'Unsupported';
-	input: FileMeta & {
-		writable_extensions: Array<string>;
-	};
+	input: FileMeta;
 	output:
 		| FileMeta & {
 			elapsed: number;
@@ -51,7 +49,6 @@ const emitFileCreate = async (payload: Array<string>) => {
 			input: {
 				path: key,
 				size: 0,
-				writable_extensions: [],
 				extension: '',
 			},
 			output: null,

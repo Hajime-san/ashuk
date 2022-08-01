@@ -100,8 +100,6 @@ const useOpenFileDialog = () => {
 	const request = useIPCQuery<
 		Array<{
 			ext: string;
-			readable: boolean;
-			writable: boolean;
 		}>
 	>({ cmd: 'get_supported_extensions' });
 
@@ -113,8 +111,7 @@ const useOpenFileDialog = () => {
 				? [
 					{
 						name: '*',
-						// filter by readble format
-						extensions: request.data.filter((v) => v.readable).map((v) => v.ext),
+						extensions: request.data.map((v) => v.ext),
 					},
 				]
 				: [],

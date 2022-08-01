@@ -80,21 +80,6 @@ impl ImageFormat {
         }
     }
 
-    pub fn can_read(&self) -> bool {
-        match self {
-            ImageFormat::Png => true,
-            ImageFormat::Jpeg => true,
-            ImageFormat::WebP => true,
-        }
-    }
-
-    pub fn can_write(&self) -> bool {
-        match self {
-            ImageFormat::Png => true,
-            ImageFormat::Jpeg => true,
-            ImageFormat::WebP => true,
-        }
-    }
     pub fn process_strategy(&self) -> ProcessStrategy {
         match self {
             ImageFormat::Png => ProcessStrategy::Serial,

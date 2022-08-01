@@ -22,7 +22,6 @@ use std::sync::Mutex;
 pub struct InputResult {
     pub path: String,
     pub size: u64,
-    pub writable_extensions: Vec<String>,
     pub extension: String,
 }
 
@@ -78,23 +77,11 @@ impl FileState {
                 size: std::fs::metadata(&file_path)
                     .expect("There is no file.")
                     .len(),
-                writable_extensions: ImageFormat::get_formats()
-                    .iter()
-                    .filter(|x| ImageFormat::can_write(&x))
-                    .map(|y| y.get_representative_ext_str())
-                    .collect::<Vec<String>>(),
                 extension: ImageFormat::from_path(&file_path)
                     .unwrap()
                     .get_representative_ext_str(),
             },
-            output: Some(CompressResult {
-                size: 0,
-                path: "".to_string(),
-                elapsed: 0,
-                extension: ImageFormat::from_path(&file_path)
-                    .unwrap()
-                    .get_representative_ext_str(),
-            }),
+            output: None,
         };
         // update hashmap
         files.entry(file_path.to_string()).or_insert(file.clone());
@@ -200,8 +187,6 @@ fn notify_file_to_client<T: ?Sized + Serialize>(
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SupportedFormatMeta {
     ext: String,
-    readable: bool,
-    writable: bool,
 }
 
 #[tauri::command]
@@ -219,9 +204,7 @@ fn get_supported_extensions() -> Result<Vec<SupportedFormatMeta>, String> {
         .iter()
         .map(|x| {
             x.extensions_str().iter().map(move |y| SupportedFormatMeta {
-                ext: <str as ToString>::to_string(*y),
-                readable: ImageFormat::can_read(&x),
-                writable: ImageFormat::can_write(&x),
+                ext: <str as ToString>::to_string(*y)
             })
         })
         .flatten()
