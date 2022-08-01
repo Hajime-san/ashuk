@@ -35,7 +35,7 @@ export type FileContext = {
 
 export type FileListObject = { [key in string]: FileContext };
 
-type Operation = 'Create' | 'Update' | 'Compress' | 'Delete';
+type Operation = 'Create' | 'Update' | 'Compress' | 'Clear';
 
 export type EmitFileRequestBody = {
 	files: FileListObject | null;
@@ -122,10 +122,10 @@ const useFileList = () => {
 	useEffect(() => {
 		let unlisten: any;
 		const f = async () => {
-			unlisten = await listen<string>('listen-delete-file', (event) => {
+			unlisten = await listen<string>('listen-clear-file', (event) => {
 				try {
 					const data = JSON.parse(event.payload) as Operation;
-					if (data === 'Delete') {
+					if (data === 'Clear') {
 						setFiles({});
 					}
 				} catch (error) {

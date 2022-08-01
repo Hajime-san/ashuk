@@ -45,7 +45,7 @@ pub enum EmitFileOperation {
     Create,
     Update,
     Compress,
-    Delete,
+    Clear,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -113,14 +113,6 @@ impl FileState {
         files.entry(path).or_insert(new_file.clone());
 
         new_file
-    }
-
-    pub fn delete_file(&self, path: String) {
-        let mut files = self.files.lock().unwrap();
-        let file = files.get(&path);
-        let deleted = file.clone();
-        // update hashmap
-        files.retain(|x, _| x == &path);
     }
 
     pub fn get_files(&self) -> FileList {
@@ -312,9 +304,9 @@ fn compress_file_handler(app: &tauri::AppHandle) {
                 EmitFileOperation::Update => {
                     file_state.update_options(task.options);
                 }
-                EmitFileOperation::Delete => {
+                EmitFileOperation::Clear => {
                     file_state.clear();
-                    notify_file_to_client(&app_handle, &EmitFileOperation::Delete, "listen-delete-file");
+                    notify_file_to_client(&app_handle, &EmitFileOperation::Clear, "listen-clear-file");
                 }
             }
         });

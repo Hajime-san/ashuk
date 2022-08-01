@@ -130,10 +130,10 @@ export const FixedArea = (props: { compressHandler: () => void }) => {
 	const { compressHandler } = props;
 	const { openHandler } = useOpenFileDialog();
 
-	const onDeleteHandler = () => {
+	const onClearHandler = () => {
 		const requestBody: EmitFileRequestBody = {
 			files: null,
-			operation: 'Delete',
+			operation: 'Clear',
 			options: null,
 		};
 		emit('emit-file', requestBody);
@@ -144,10 +144,10 @@ export const FixedArea = (props: { compressHandler: () => void }) => {
 			<SelectOptions />
 			<div className='fixedArea_buttons'>
 				<button
-					onClick={onDeleteHandler}
-					className={'fixedArea_delete'}
+					onClick={onClearHandler}
+					className={'fixedArea_clear'}
 				>
-					Delete File
+					Clear list
 				</button>
 				<button
 					onClick={openHandler}
