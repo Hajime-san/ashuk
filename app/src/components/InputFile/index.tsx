@@ -6,6 +6,10 @@ import './style.css';
 import { FixedArea } from '../FixedArea';
 import { formatBytes } from '~/libs/util/formatBytes';
 
+import PendingIcon from '@mui/icons-material/Pending';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+
 type FileMeta = {
 	path: string;
 	size: number;
@@ -156,7 +160,6 @@ const FileList = (
 				<li>compressed</li>
 			</ul>
 			{Object.entries(files).map(([key, item], i) => {
-				const compressedFile = item.status === 'Success';
 				const bgColor = i % 2 === 0 ? 'rgb(225 224 224)' : '#fafafa';
 				return (
 					<ul
@@ -168,10 +171,14 @@ const FileList = (
 					>
 						<li>
 							<span>{item.input.path}</span>
-							{compressedFile && <span>✅</span>}
+							<div data-status={item.status}>
+								{item.status === 'Initialized' && <PendingIcon sx={{ fill: '#888' }} />}
+								{item.status === 'Pending' && <AutorenewIcon />}
+								{item.status === 'Success' && <CheckCircleIcon sx={{ fill: '#2e7d32' }} />}
+							</div>
 						</li>
 						<li>{formatBytes(item.input.size)}</li>
-						<li>{compressedFile ? formatBytes(item.output?.size!) : ''}</li>
+						<li>{item.status === 'Success' ? formatBytes(item.output?.size!) : ''}</li>
 					</ul>
 				);
 			})}

@@ -20,8 +20,11 @@
     left: 0;
     display: grid;
     grid-template-columns: 3fr 1fr 1fr;
-    column-gap: 1rem;
     justify-content: space-between;
+}
+
+.tr_h li {
+    padding: 0 0.5rem;
 }
 
 .tr_h::before {
@@ -37,7 +40,36 @@
 .td_h {
     display: grid;
     grid-template-columns: 3fr 1fr 1fr;
-    column-gap: 1rem;
     justify-content: space-between;
     padding: 0.2rem;
+}
+
+.td_h li {
+    padding: 0 0.5rem;
+    font-size: 0.9rem;
+}
+
+.td_h li:first-child {
+    display: flex;
+    align-items: flex-start;
+}
+
+.td_h li:first-child span {
+    flex: 1;
+    word-break: break-all;
+}
+
+.td_h li:first-child div {
+    display: inline-flex;
+}
+
+@keyframes rotate {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.td_h li:first-child div[data-status="Pending"] {
+    transform-origin: center;
+    animation: rotate 6s linear infinite forwards;
 }
