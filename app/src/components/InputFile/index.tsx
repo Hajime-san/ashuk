@@ -3,8 +3,8 @@ import { useOpenDialogQuery } from '~/hooks/useOpenDialogQuery';
 import { emit, listen } from '@tauri-apps/api/event';
 
 import './style.css';
-import { useIPCQuery } from '~/hooks/useIPCQuery';
 import { FixedArea } from '../FixedArea';
+import { formatBytes } from '~/libs/util/formatBytes';
 
 type FileMeta = {
 	path: string;
@@ -62,8 +62,8 @@ const emitFileCreate = async (payload: Array<string>) => {
 	emit('emit-file', requestBody);
 };
 
-const useOptimize = (files: FileListObject) => {
-	const optimizeHandler = useCallback(() => {
+const useCompress = (files: FileListObject) => {
+	const compressHandler = useCallback(() => {
 		const requestBody: EmitFileRequestBody = {
 			files: files,
 			operation: 'Compress',
@@ -73,20 +73,8 @@ const useOptimize = (files: FileListObject) => {
 	}, [files]);
 
 	return {
-		optimizeHandler,
+		compressHandler,
 	};
-};
-
-const formatBytes = (bytes: number, decimals = 2) => {
-	if (bytes === 0) return '0 Bytes';
-
-	const k = 1024;
-	const dm = decimals < 0 ? 0 : decimals;
-	const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
 const useFileList = () => {
@@ -162,10 +150,10 @@ const FileList = (
 
 	return (
 		<div className='container'>
-			<ul className='th'>
+			<ul className='tr_h'>
 				<li>filename</li>
 				<li>size</li>
-				<li>optimized</li>
+				<li>compressed</li>
 			</ul>
 			{Object.entries(files).map(([key, item], i) => {
 				const compressedFile = item.status === 'Success';
@@ -173,13 +161,9 @@ const FileList = (
 				return (
 					<ul
 						style={{
-							display: 'grid',
-							gridTemplateColumns: '3fr 1fr 1fr',
-							columnGap: '1rem',
-							justifyContent: 'space-between',
-							padding: '0.2rem',
 							backgroundColor: bgColor,
 						}}
+						className='td_h'
 						key={key + String(i)}
 					>
 						<li>
@@ -197,12 +181,12 @@ const FileList = (
 
 export const InputFile = () => {
 	const { files } = useFileList();
-	const { optimizeHandler } = useOptimize(files);
+	const { compressHandler } = useCompress(files);
 
 	return (
 		<div style={{ height: '100%' }}>
 			<FileList files={files} />
-			<FixedArea optimizeHandler={optimizeHandler} />
+			<FixedArea compressHandler={compressHandler} />
 		</div>
 	);
 };

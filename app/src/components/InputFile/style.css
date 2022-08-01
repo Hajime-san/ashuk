@@ -14,7 +14,7 @@
     background-color: #a6a6a6;
 }
 
-.th {
+.tr_h {
     position: sticky;
     top: 0;
     left: 0;
@@ -24,7 +24,7 @@
     justify-content: space-between;
 }
 
-.th::before {
+.tr_h::before {
     z-index: -1;
     position: absolute;
     width: 100%;
@@ -32,4 +32,12 @@
     content: '';
     background-color: #fff;
     box-shadow: 0px 1px 10px #777;
+}
+
+.td_h {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1fr;
+    column-gap: 1rem;
+    justify-content: space-between;
+    padding: 0.2rem;
 }

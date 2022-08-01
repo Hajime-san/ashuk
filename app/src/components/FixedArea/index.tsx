@@ -126,8 +126,8 @@ const useOpenFileDialog = () => {
 	};
 };
 
-export const FixedArea = (props: { optimizeHandler: () => void }) => {
-	const { optimizeHandler } = props;
+export const FixedArea = (props: { compressHandler: () => void }) => {
+	const { compressHandler } = props;
 	const { openHandler } = useOpenFileDialog();
 
 	const onDeleteHandler = () => {
@@ -156,10 +156,10 @@ export const FixedArea = (props: { optimizeHandler: () => void }) => {
 					Open file
 				</button>
 				<button
-					onClick={optimizeHandler}
+					onClick={compressHandler}
 					className={'fixedArea_start'}
 				>
-					Optimize
+					Compress
 				</button>
 			</div>
 		</div>
