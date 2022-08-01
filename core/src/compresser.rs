@@ -21,7 +21,7 @@ use crate::format_meta::ImageFormat;
 #[derive(Error, Debug)]
 pub enum CompressError {
     #[error("This operation from {0} to {1} is not supported")]
-    Unsupported(String, String),
+    Unsupported(ImageFormat, ImageFormat),
     #[error(transparent)]
     PngError(#[from] oxipng::PngError),
     #[error("file io error: {0}")]
@@ -82,6 +82,13 @@ pub fn compress_to_target_extension(
     let input_extension = ImageFormat::from_path(&file_path).unwrap();
 
     let output_extension = ImageFormat::from_extension(&options.clone().extension).unwrap();
+
+    if let false = input_extension.can_compress(&output_extension) {
+        return Err(CompressError::Unsupported(
+            input_extension,
+            output_extension,
+        ));
+    };
 
     let confirmed_extension = if input_extension == output_extension {
         // overwrite

@@ -9,6 +9,8 @@ import { formatBytes } from '~/libs/util/formatBytes';
 import PendingIcon from '@mui/icons-material/Pending';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 
 type FileMeta = {
 	path: string;
@@ -172,6 +174,8 @@ const FileList = (
 								{item.status === 'Initialized' && <PendingIcon sx={{ fill: '#888' }} />}
 								{item.status === 'Pending' && <AutorenewIcon />}
 								{item.status === 'Success' && <CheckCircleIcon sx={{ fill: '#2e7d32' }} />}
+								{item.status === 'Unsupported' && <ReportProblemIcon sx={{ fill: '#fcb416' }} />}
+								{item.status === 'Failed' && <ErrorIcon sx={{ fill: '#eb0014' }} />}
 							</div>
 						</li>
 						<li>{formatBytes(item.input.size)}</li>

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use std::ffi::OsStr;
+use std::fmt;
 use std::path::Path;
 
 pub enum ProcessStrategy {
@@ -14,6 +15,12 @@ pub enum ImageFormat {
     Png,
     Jpeg,
     WebP,
+}
+
+impl fmt::Display for ImageFormat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Error, Debug)]
@@ -77,6 +84,26 @@ impl ImageFormat {
             ImageFormat::Png => <str as ToString>::to_string(&*self.extensions_str()[0]),
             ImageFormat::Jpeg => <str as ToString>::to_string(&*self.extensions_str()[0]),
             ImageFormat::WebP => <str as ToString>::to_string(&*self.extensions_str()[0]),
+        }
+    }
+
+    pub fn can_compress(&self, target: &ImageFormat) -> bool {
+        match self {
+            &ImageFormat::Jpeg => match target {
+                &ImageFormat::Png => false,
+                &ImageFormat::WebP => true,
+                _ => unreachable!(),
+            },
+            &ImageFormat::Png => match target {
+                &ImageFormat::Jpeg => false,
+                &ImageFormat::WebP => true,
+                _ => unreachable!(),
+            },
+            &ImageFormat::WebP => match target {
+                &ImageFormat::Jpeg => true,
+                &ImageFormat::Png => false,
+                _ => unreachable!(),
+            },
         }
     }
 

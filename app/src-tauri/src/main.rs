@@ -4,7 +4,10 @@
 )]
 
 use ashuk_core::{
-    compresser::{compress_to_target_extension, CompressOptions, Result as CompressResult, Status},
+    compresser::{
+        compress_to_target_extension, CompressError, CompressOptions, Result as CompressResult,
+        Status,
+    },
     format_meta::{CompressOptionsContext, ImageFormat, ProcessStrategy},
 };
 use rayon::prelude::*;
@@ -160,11 +163,16 @@ impl FileState {
             // notify to client for success
             notify_file_to_client(&app_handle, &updated_file, emitter_name);
         } else {
+            // handle error
+            let status = match &result.err().unwrap() {
+                CompressError::Unsupported(..) => Status::Unsupported,
+                _ => Status::Failed,
+            };
             // update state
             let updated_file = self.update_file(
                 path,
                 FileContext {
-                    status: Status::Failed,
+                    status: status,
                     input: file.input,
                     output: None,
                 },
@@ -204,7 +212,7 @@ fn get_supported_extensions() -> Result<Vec<SupportedFormatMeta>, String> {
         .iter()
         .map(|x| {
             x.extensions_str().iter().map(move |y| SupportedFormatMeta {
-                ext: <str as ToString>::to_string(*y)
+                ext: <str as ToString>::to_string(*y),
             })
         })
         .flatten()
