@@ -1,5 +1,5 @@
-import './App.css';
-import { InputFile } from './components/InputFile';
+import { InputFile } from '~/components/InputFile';
+import './index.css';
 
 function App() {
 	return (
