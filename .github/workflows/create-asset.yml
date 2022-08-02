@@ -1,0 +1,116 @@
+name: 'Create Release Asset'
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+env:
+  NODE_VERSION: 16
+
+jobs:
+  # create new tag from package.json
+  create_git_tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: |
+          echo "v$(node -p "require('./app/package.json').version")" > PACKAGE_VERSION
+          git tag $(cat PACKAGE_VERSION)
+          git push origin $(cat PACKAGE_VERSION)
+
+  # create release draft for upload binary
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create-release.outputs.result }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: get version
+        run: echo "PACKAGE_VERSION=$(node -p "require('./app/package.json').version")" >> $GITHUB_ENV
+      - name: create release
+        id: create-release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `v${process.env.PACKAGE_VERSION}`,
+              name: `ashuk v${process.env.PACKAGE_VERSION}`,
+              draft: true,
+              prerelease: false
+            })
+
+            return data.id
+
+  # build tauri for platform
+  build-tauri:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - uses: actions/checkout@v3
+    # rust
+    - name: install Rust stable
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - name: cache rust
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/**/.cargo/bin/
+          ~/**/.cargo/registry/index/
+          ~/**/.cargo/registry/cache/
+          ~/**/.cargo/git/db/
+          ~/**/target/
+        key: os-latest-cargo-${{ hashFiles('**/Cargo.lock') }}
+    # ubuntu
+    - name: install dependencies (ubuntu only)
+      if: matrix.platform == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+    # node
+    - name: cache node_modules
+      id: node_modules_cache_id
+      uses: actions/cache@v3
+      with:
+        path: |
+          app/node_modules
+        key: ${{ matrix.platform }}-node-v${{ env.NODE_VERSION }}-deps-${{ hashFiles('**/yarn.lock') }}
+    - name: setup node
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    # set up build
+    - name: Make envfile
+      uses: SpicyPizza/create-envfile@v1.3
+      with:
+        envkey_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        directory: './app/src-tauri'
+        file_name: .env
+    # build binary
+    - name: install app dependencies and build it
+      run: yarn --prefer-offline --check-files --frozen-lockfile --non-interactive && yarn build
+      working-directory: ./app
+    - uses: tauri-apps/tauri-action@v0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        releaseId: ${{ needs.create-release.outputs.release_id }}

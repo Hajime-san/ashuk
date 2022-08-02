@@ -1,0 +1,9 @@
+{
+    "deno.enable": false,
+    "deno.lint": true,
+    "deno.config": "./app/deno.json",
+    "[typescript]": {
+      "editor.formatOnSave": true,
+      "editor.defaultFormatter": "denoland.vscode-deno"
+    }
+}

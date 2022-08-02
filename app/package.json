@@ -1,0 +1,36 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev:client": "vite --host",
+    "build:client": "tsc && vite build",
+    "preview": "vite preview",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^4.0.10",
+    "@tauri-apps/api": "^1.0.2",
+    "rc-slider": "^10.0.1",
+    "rc-tooltip": "^5.2.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^4.4.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.0.4",
+    "@tauri-apps/tauricon": "^1.0.3",
+    "@types/node": "^18.0.6",
+    "@types/react": "^18.0.15",
+    "@types/react-dom": "^18.0.6",
+    "@vitejs/plugin-react": "^2.0.0",
+    "typescript": "^4.6.4",
+    "vite": "^3.0.0"
+  },
+  "volta": {
+    "node": "16.16.0",
+    "yarn": "1.22.19"
+  }
+}
