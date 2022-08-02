@@ -90,19 +90,19 @@ impl ImageFormat {
     pub fn can_compress(&self, target: &ImageFormat) -> bool {
         match self {
             &ImageFormat::Jpeg => match target {
+                &ImageFormat::Jpeg => true,
                 &ImageFormat::Png => false,
                 &ImageFormat::WebP => true,
-                _ => unreachable!(),
             },
             &ImageFormat::Png => match target {
                 &ImageFormat::Jpeg => false,
+                &ImageFormat::Png => true,
                 &ImageFormat::WebP => true,
-                _ => unreachable!(),
             },
             &ImageFormat::WebP => match target {
                 &ImageFormat::Jpeg => true,
                 &ImageFormat::Png => false,
-                _ => unreachable!(),
+                &ImageFormat::WebP => true,
             },
         }
     }
