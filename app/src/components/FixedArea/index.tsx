@@ -5,6 +5,8 @@ import { useOpenDialogQuery } from '~/hooks/useOpenDialogQuery';
 import { EmitFileRequestBody } from '../InputFile';
 import './style.css';
 
+import TooltipSlider from '../TooltipSlider';
+
 type CompressOptionsContext = {
 	extension: string;
 	min: number;
@@ -52,12 +54,13 @@ const SelectOptions = () => {
 	};
 
 	// update on compress option number changed
-	const onChangeInputHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const onChangeInputHandler = (_value: number | number[]) => {
+		const value = Array.isArray(_value) ? _value[0] : _value;
 		const requestBody: EmitFileRequestBody = {
 			files: null,
 			operation: 'Update',
 			options: {
-				quality: Number(e.target.value),
+				quality: value,
 				extension: currentOption?.extension!,
 			},
 		};
@@ -78,15 +81,26 @@ const SelectOptions = () => {
 								return <option value={item.extension} key={item.extension}>{item.extension}</option>;
 							})}
 						</select>
-						<input
-							type='range'
-							name='CompressOptionsContextValue'
-							id='CompressOptionsContextValue'
+						<TooltipSlider
 							min={currentOption?.min ? currentOption.min : 0}
 							max={currentOption?.max ? currentOption.max : 0}
 							step={currentOption?.step ? currentOption.step : 0}
 							defaultValue={currentOption?.default ? currentOption.default : 0}
 							onChange={onChangeInputHandler}
+							marks={{
+								[currentOption?.min ? currentOption.min : 0]: currentOption?.min
+									? currentOption.min
+									: 0,
+								[currentOption?.max ? currentOption.max : 0]: currentOption?.max
+									? currentOption.max
+									: 0,
+							}}
+							tipFormatter={(value) => `${value}`}
+							tipProps={{
+								placement: 'top',
+								visible: true,
+							}}
+							range
 						/>
 					</div>
 				)
