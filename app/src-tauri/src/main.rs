@@ -10,5 +10,7 @@ fn main() {
     #[cfg(debug_assertions)]
     logger::init_logger();
 
+    logger::init_sentry();
+
     app::init_app();
 }

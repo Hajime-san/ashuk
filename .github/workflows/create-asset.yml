@@ -98,6 +98,13 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: ${{ env.NODE_VERSION }}
+    # set up build
+    - name: Make envfile
+      uses: SpicyPizza/create-envfile@v1.3
+      with:
+        envkey_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        directory: './app/src-tauri'
+        file_name: .env
     # build binary
     - name: install app dependencies and build it
       run: yarn --prefer-offline --check-files --frozen-lockfile --non-interactive && yarn build

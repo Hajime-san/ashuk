@@ -1,7 +1,9 @@
 use std::env;
 use std::io::Write;
 
+use dotenv::dotenv;
 use env_logger;
+use sentry;
 
 pub fn init_logger() {
     env::set_var("RUST_LOG", "debug");
@@ -20,4 +22,20 @@ pub fn init_logger() {
             )
         })
         .init();
+}
+
+pub fn init_sentry() {
+    dotenv().ok();
+
+    let sentry_dsn = dotenv::var("SENTRY_DSN").unwrap();
+
+    let _guard = sentry::init((
+        sentry_dsn,
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            sample_rate: 0.2,
+            traces_sample_rate: 0.2,
+            ..Default::default()
+        },
+    ));
 }
