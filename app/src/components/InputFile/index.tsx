@@ -6,11 +6,7 @@ import './style.css';
 import { FixedArea } from '../FixedArea';
 import { formatBytes } from '~/libs/util/formatBytes';
 
-import PendingIcon from '@mui/icons-material/Pending';
-import AutorenewIcon from '@mui/icons-material/Autorenew';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
-import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import { MdCached, MdCheckCircle, MdError, MdPending, MdReportProblem } from 'react-icons/md';
 
 type FileMeta = {
 	path: string;
@@ -171,11 +167,11 @@ const FileList = (
 						<li>
 							<span>{item.input.path}</span>
 							<div data-status={item.status}>
-								{item.status === 'Initialized' && <PendingIcon sx={{ fill: '#888' }} />}
-								{item.status === 'Pending' && <AutorenewIcon />}
-								{item.status === 'Success' && <CheckCircleIcon sx={{ fill: '#2e7d32' }} />}
-								{item.status === 'Unsupported' && <ReportProblemIcon sx={{ fill: '#fcb416' }} />}
-								{item.status === 'Failed' && <ErrorIcon sx={{ fill: '#eb0014' }} />}
+								{item.status === 'Initialized' && <MdPending color='#888' />}
+								{item.status === 'Pending' && <MdCached color='#172b4d' />}
+								{item.status === 'Success' && <MdCheckCircle color='#2e7d32' />}
+								{item.status === 'Unsupported' && <MdReportProblem color='#fcb416' />}
+								{item.status === 'Failed' && <MdError color='#eb0014' />}
 							</div>
 						</li>
 						<li>{formatBytes(item.input.size)}</li>

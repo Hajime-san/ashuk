@@ -61,11 +61,12 @@
 
 .td_h li:first-child div {
     display: inline-flex;
+    font-size: 1.3rem;
 }
 
 @keyframes rotate {
     100% {
-        transform: rotate(360deg);
+        transform: rotate(-360deg);
     }
 }
 
