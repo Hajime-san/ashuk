@@ -65,7 +65,7 @@ impl FileState {
             files: Mutex::new(files),
             options: Mutex::new(CompressOptions {
                 extension: option[0].extension.clone(),
-                quality: Some(option[0].default),
+                quality: Some(option[0].default_value),
             }),
         }
     }

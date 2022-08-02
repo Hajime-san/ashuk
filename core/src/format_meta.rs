@@ -34,7 +34,7 @@ pub struct CompressOptionsContext {
     pub extension: String,
     pub min: f32,
     pub max: f32,
-    pub default: f32,
+    pub default_value: f32,
     pub step: f32,
 }
 
@@ -131,21 +131,21 @@ impl ImageFormat {
                 extension: self.get_representative_ext_str(),
                 min: 0.0,
                 max: 6.0,
-                default: 6.0,
+                default_value: 6.0,
                 step: 1.0,
             },
             ImageFormat::Jpeg => CompressOptionsContext {
                 extension: self.get_representative_ext_str(),
                 min: 0.0,
                 max: 100.0,
-                default: 75.0,
+                default_value: 75.0,
                 step: 0.1,
             },
             ImageFormat::WebP => CompressOptionsContext {
                 extension: self.get_representative_ext_str(),
                 min: 0.0,
                 max: 100.0,
-                default: 75.0,
+                default_value: 75.0,
                 step: 0.1,
             },
         }

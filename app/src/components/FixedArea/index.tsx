@@ -11,7 +11,7 @@ type CompressOptionsContext = {
 	extension: string;
 	min: number;
 	max: number;
-	default: number;
+	default_value: number;
 	step: number;
 };
 
@@ -46,7 +46,7 @@ const SelectOptions = () => {
 			files: null,
 			operation: 'Update',
 			options: {
-				quality: _currentOption.default,
+				quality: _currentOption.default_value,
 				extension: _currentOption.extension,
 			},
 		};
@@ -85,7 +85,7 @@ const SelectOptions = () => {
 							min={currentOption?.min ? currentOption.min : 0}
 							max={currentOption?.max ? currentOption.max : 0}
 							step={currentOption?.step ? currentOption.step : 0}
-							defaultValue={currentOption?.default ? currentOption.default : 0}
+							defaultValue={currentOption?.default_value ? currentOption.default_value : 0}
 							onChange={onChangeInputHandler}
 							marks={{
 								[currentOption?.min ? currentOption.min : 0]: currentOption?.min
