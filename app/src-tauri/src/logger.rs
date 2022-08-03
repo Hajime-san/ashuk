@@ -27,7 +27,11 @@ pub fn init_logger() {
 pub fn init_sentry() {
     dotenv().ok();
 
-    let sentry_dsn = dotenv::var("SENTRY_DSN").unwrap();
+    let sentry_dsn = if cfg!(debug_assertions) {
+        dotenv::var("SENTRY_DSN").unwrap()
+    } else {
+        env!("SENTRY_DSN").to_string()
+    };
 
     let _guard = sentry::init((
         sentry_dsn,
